@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Welcome to the 60 Worlds!</title>
+	<link rel="stylesheet" href="/style.css">
+	<!-- <script type="importmap">
+		{
+		  "imports": {
+			"three": "../build/three.module.js",
+			"three/addons/": "../jsm/"
+		  }
+		}</script> -->
+	<script type="module">
+		import { loadPreviews, fetchUserState, updateMyWorldsButton,openUploadWindow } from './script.js';
+		// import { loadModel,goBack,makeThisMyConfig,finalUpload } from './load.js';
+		let currentIndex = 0;
+		const itemsPerPage = 9;
+		const myWorldsButton = document.getElementById('myWorldsButton');
+		let { isAuthenticated, userInfo } = await fetchUserState()
+
+
+		/*
+			 ##
+			###
+		   # ##
+		  #  ##
+		 #######
+			 ##
+			 ##
+		Load Button, Initialization
+		*/
+		function redirectToLogin() {
+			window.location.href = '/home.html';
+		}
+
+
+
+		if (isAuthenticated && userInfo) {
+			myWorldsButton.textContent = `My Worlds - ${userInfo.nickname}`;
+
+
+			const observer = initializeObserver();
+			loadPreviews(observer,'author_name',userInfo.sub);
+		} else {
+			myWorldsButton.textContent = `My Worlds - ERROR`;
+		}
+
+
+
+		/*
+		  #######
+		  ##
+		  ##
+		  ######
+			   ##
+		  ##   ##
+		   #####
+		Scrolling, observer, load previews
+		*/
+
+		window.onload = function () {
+			const observer = initializeObserver();
+			loadPreviews(observer); // Initial preview load with observer
+
+		};
+
+		// Function to initialize the IntersectionObserver
+		function initializeObserver() {
+			const observer = new IntersectionObserver((entries, observer) => {
+				loadMorePreviews(entries, observer);
+			}, {
+				root: null,
+				rootMargin: '-200px',
+				threshold: 1.0 // Trigger when sentinel is fully in view
+			});
+
+			// Observe the sentinel for infinite scroll
+			const sentinel = document.getElementById('sentinel');
+			if (sentinel) {
+				observer.observe(sentinel);
+			} else {
+				console.error('Sentinel element not found');
+			}
+
+			return observer;
+		}
+
+		// Function to handle observer-triggered loading
+		function loadMorePreviews(entries, observer) {
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					loadPreviews(observer);
+				}
+			});
+		}
+
+		/*
+		   #####
+		  ##
+		  ##
+		  ######
+		  ##   ##
+		  ##   ##
+		   #####
+		Opening the model - In the control mode!
+		*/
+		document.getElementById('uploadBtn').addEventListener('click', openUploadWindow);
+
+	</script>
+</head>
+
+<body>
+
+	<div class="header-container">
+		<h1>60 Worlds</h1>
+		<input type="text" id="search-bar" placeholder="Find a world...">
+		<button onclick="window.location.href='/home.html';" class="text-button" ; id="myWorldsButton">My
+			Worlds</button>
+		<button class="upload-button" ; id="uploadBtn">Share Your World (.glb)</button>
+			
+	</div>
+
+	<main>
+		<div class="div" id="model-container">
+			<!-- Model preview units will be dynamically injected here -->
+		</div>
+	</main>
+
+	<div id="sentinel"></div>
+
+</body>
+
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Welcome to the 60 Worlds!</title>
+	<link rel="stylesheet" href="/style.css">
+	<script type="module">
+		import { loadPreviews, fetchUserState, updateMyWorldsButton,dynamicMargin } from './script.js';
+		let currentIndex = 0;
+		const itemsPerPage = 9;
+		const myWorldsButton = document.getElementById('myWorldsButton');
+		let { isAuthenticated, userInfo } = await fetchUserState()
+		console.log(isAuthenticated)
+		console.log(userInfo)
+
+		/*
+		   ###
+		  ####
+		 ## ##
+			##
+			##
+			##
+		 #########
+		Load Button, Initialization
+		*/
+		function redirectToLogin() {
+			window.location.href = '/login';
+		}
+		const observer = initializeObserver();
+		loadPreviews(observer); 
+
+		if (isAuthenticated && userInfo) {
+			myWorldsButton.textContent = `My Worlds - ${userInfo.nickname}`;
+			myWorldsButton.onclick = function () {
+				window.location.href = '/profile.html'
+			};
+
+		}
+
+
+		/*
+		   #####
+		  ##   ##
+			   ##
+			  ##
+			##
+		   ##
+		  #########
+		Scrolling, observer, load previews
+		*/
+
+		// Function to initialize the IntersectionObserver
+		function initializeObserver() {
+			console.log("initializeObserver")
+			console.log(dynamicMargin())
+			const observer = new IntersectionObserver((entries, observer) => {
+				loadMorePreviews(entries, observer);
+			}, {
+				root: null,
+				rootMargin: `${dynamicMargin()}px`,
+				threshold: 1 // Trigger when sentinel is fully in view
+			});
+
+			// Observe the sentinel for infinite scroll
+			const sentinel = document.getElementById('sentinel');
+			if (sentinel) {
+				observer.observe(sentinel);
+			} else {
+				console.error('Sentinel element not found');
+			}
+
+			return observer;
+		}
+
+		// Function to handle observer-triggered loading
+		function loadMorePreviews(entries, observer) {
+			console.log("load more previews")
+			entries.forEach(entry => {
+				if (entry.isIntersecting) {
+					loadPreviews(observer);
+				}
+			});
+		}
+		/*
+		   #####
+		  ##   ##
+			   ##
+			####
+			   ##
+		  ##   ##
+		   #####
+		Opening the model
+		*/
+	</script>
+</head>
+
+<body>
+
+	<div class="header-container">
+		<h1>60 Worlds</h1>
+		<input type="text" id="search-bar" placeholder="Find a world...">
+		<button onclick="window.location.href='/login';" class="text-button" ; id="myWorldsButton">Sign In / Sign Up</button>
+	</div>
+
+	<main>
+		<div class="div" id="model-container">
+			<!-- Model preview units will be dynamically injected here -->
+		</div>
+	</main>
+
+	<div id="sentinel"></div>
+
+</body>
+
+</html>

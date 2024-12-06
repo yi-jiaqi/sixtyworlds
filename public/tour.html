@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Welcome to the 60 Worlds!</title>
+	<link rel="stylesheet" href="/style.css">
+	<script type="importmap">
+		{
+		  "imports": {
+			"three": "../build/three.module.js",
+			"three/addons/": "../jsm/"
+		  }
+		}</script>
+	<script type="module">
+		/*
+		TODO for tour's index.html
+		1. Identifying two things:
+			  A.Is it from online ?
+				-> Yes! Pre assigned URL, download progression bar
+				-> No! Load local model, Pre assigned URL for upload
+			  B.Is the visitor the author ?
+				-> Yes! Load traces from firestore + comments & reaction UI!
+				  -> No! Just comments & reaction UI!
+					-> No! file is from local
+					  -> Load config UI!
+	
+						-> Load model(with or without collision) !
+	
+						  2. How many UIs:
+							  comments UI
+							  config UI
+							  download & upload Progression Bar
+	
+		3. More features:
+			Reaction;
+			Trace highlight
+		*/
+		import { fetchUserState, getAuthorUIDBySerial, getModelData_Cloud, createConfigUI, createCommentUI } from './script.js';
+		import { loadModel } from './load.js';
+		let { isAuthenticated, userInfo } = await fetchUserState()
+		const { serial, blobUrl } = getQueryParams_Serial();
+		let imTheAuthur;
+		// let myUID= userInfo.sub;
+		let authorUID;
+		let model_Object;
+
+
+		/*
+			 ##
+			###
+		   # ##
+		  #  ##
+		 #######
+			 ##
+			 ##
+		Basic Functions
+		*/
+
+		function onWindowResize() {
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+		}
+
+		function getQueryParams_Serial() {
+			const params = new URLSearchParams(window.location.search);
+			let serial = params.get('serial') || 'missing';
+			let blobUrl = params.get('blobUrl');
+			return { serial, blobUrl }
+		}
+
+
+
+		/*
+		  #######
+		  ##
+		  ##
+		  ######
+			   ##
+		  ##   ##
+		   #####
+		Loading the model:
+		data = {
+		model_url:_______,
+		...,
+		...,
+		}
+		*/
+
+
+
+
+		if (serial === 'missing' || serial === undefined) {//load local
+			const currentDate = new Date();
+			model_Object = {
+				model_url: blobUrl,
+				author_UID: userInfo.sub,
+				author_Name: userInfro.nickname,
+				upload_Date: currentDate,
+				likes:0,
+			}
+			loadModel(model_Object,false)
+
+		} else {//load cloud,
+			getModelData_Cloud(serial).then(data => {
+				if (data) {
+					model_Object = data
+					// Handle the parsed data object
+					loadModel(data)
+				}
+			});
+		}
+
+		if (serial !== 'missing' && serial != undefined) {
+			authorUID = await getAuthorUIDBySerial(serial)
+		} else {
+			authorUID = userInfo.sub
+		}
+
+		if (serial === 'missing' && serial != undefined) { imTheAuthur = true } else {
+			imTheAuthur = authorUID == myUID
+		}
+
+		if (imTheAuthur) {
+			console.log("[Validated] The user is the authur")
+			createConfigUI()
+		} else {
+			console.log("[Validated] The user is Not the authur")
+		}
+		createCommentUI()
+
+
+
+
+
+		/*
+		   #####
+		  ##
+		  ##
+		  ######
+		  ##   ##
+		  ##   ##
+		   #####
+		If I'm the author, then I should:
+		1. have a button for toggle flying / walking;
+		2. have a button for "locate current position as starting point"
+		*/
+
+
+
+		/*
+		  #########
+			   ##
+			  ##
+			 ##
+			##
+		   ##
+		  ##
+		If I'm NOT the author, then I should:
+		Comment
+		*/
+
+		/*
+		   #####
+		  ##   ##
+		  ##   ##
+		   #####
+		  ##   ##
+		  ##   ##
+		   #####
+		Generate preview, upload file and photo;
+		If interrupted, send a "disable" 
+		*/
+	</script>
+</head>
+
+<body>
+
+
+	<div id="container"></div>
+
+	<div id="viewer-container"></div>
+	<div id="config-window" class="popup hidden"></div>
+	<div id="feedback-window" class="popup hidden"></div>
+</body>
+
+</html>
