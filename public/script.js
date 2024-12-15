@@ -13,7 +13,8 @@ Endpoint - getPreviews
 */
 export function loadPreviews(observer, sort = 'time', word = '') {
 	// sort can be time / likes / author_name / search, when sort = author_name, word is the UID, when sort = search, word is the search_word
-	// console.log("load previews!");
+	console.log("load previews: " + word);
+
 	fetch(`/api/getPreviews?index=${currentIndex}&number=${itemsPerPage}&sort=${sort}&word=${word}`)
 		.then(response => {
 			if (!response.ok) {
@@ -36,7 +37,9 @@ export function loadPreviews(observer, sort = 'time', word = '') {
 					// Display the "End of the Worlds" message if isEnd is encountered
 					console.log("End of the Worlds!");
 					const endMessage = document.createElement('div');
-					endMessage.textContent = "Congrats! You are now at the end of the worlds.";
+					if (sort == "author") { endMessage.textContent = " Empty! Would you upload your amazing worlds?"; } else {endMessage.textContent = "Congrats! You are now at the end of the worlds.";
+
+					}
 					endMessage.className = 'end-message';
 					container.appendChild(endMessage);
 
@@ -249,27 +252,27 @@ function uploadFileToS3(file, serial) {
 }
 
 
-export async function finalUpload(model_Object){
+export async function finalUpload(model_Object) {
 	try {
-        const response = await fetch('http://localhost:3000/upload-model', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(model_Object),
-        });
+		const response = await fetch('http://localhost:3000/upload-model', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(model_Object),
+		});
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-        }
+		if (!response.ok) {
+			throw new Error(`HTTP error! Status: ${response.status}`);
+		}
 
-        const responseData = await response.json();
-        console.log('Response from server:', responseData);
-        console.log('Upload URL:', responseData.uploadUrl);
-		
-    } catch (error) {
-        console.error('Error sending JSON to server:', error);
-    }
+		const responseData = await response.json();
+		console.log('Response from server:', responseData);
+		console.log('Upload URL:', responseData.uploadUrl);
+
+	} catch (error) {
+		console.error('Error sending JSON to server:', error);
+	}
 }
 
 /*
@@ -305,8 +308,8 @@ export async function fetchUserState() {
 
 export async function getAuthorUIDBySerial(serial) {
 	//This is the first function, in order to validate the user is the author.
-	const response = await fetch(`/getAuthorUID/${serial}`);
-	// console.log(response)
+	const response = await fetch(`/api/getAuthorUID/${serial}`);
+	console.log(response)
 	if (response.ok) {
 		const data = await response.json();
 		// console.log(data.author_uid)
@@ -351,7 +354,8 @@ UI, updating the interface...
 */
 
 
-function showLoadingGear() {
+// Function to show the loading gear
+export function showLoadingGear() {
 	const gear = document.createElement('div');
 	gear.id = 'loadingGear';
 	gear.style.width = '50px';
@@ -365,13 +369,38 @@ function showLoadingGear() {
 	gear.style.left = '50%';
 	gear.style.transform = 'translate(-50%, -50%)';
 
+	// Progress Text
+	const progressText = document.createElement('div');
+	progressText.id = 'loadingProgress';
+	progressText.style.position = 'absolute';
+	progressText.style.top = '60px';
+	progressText.style.left = '50%';
+	progressText.style.transform = 'translateX(-50%)';
+	progressText.style.color = '#333';
+	progressText.style.fontSize = '14px';
+	progressText.style.fontWeight = 'bold';
+	progressText.innerText = '0%';
+
+	// Append gear and progress text
 	document.body.appendChild(gear);
+	document.body.appendChild(progressText);
 }
+
 // Function to hide the rotating gear
-function hideLoadingGear() {
+export function hideLoadingGear() {
 	const gear = document.getElementById('loadingGear');
 	if (gear) {
 		document.body.removeChild(gear);
+	}
+}
+
+// Function to update the loading progression
+export function updateLoadingGear(progression) {
+	const progressText = document.getElementById('loadingProgress');
+	if (progressText) {
+		// Ensure progression is between 0 and 100
+		const displayProgress = Math.min(Math.max(progression, 0), 100);
+		progressText.innerText = `${displayProgress}%`;
 	}
 }
 // CSS animation for the rotating gear
@@ -414,7 +443,7 @@ export function createConfigUI() {
 
 	document.getElementById("change-mode").addEventListener("click", () => {
 		console.log("Fly Mode clicked");
-		// Add logic for toggling fly mode
+		// Add logic for toggling fly mode text
 	});
 
 	document.querySelector(".upload-button").addEventListener("click", () => {
@@ -433,11 +462,11 @@ export function createCommentUI() {
 	  <h4>Title</h4>
 	  <div class="comments">
 		<div class="comment-item">
-		  <span class="username">User1:</span> <span class="comment-content">Great work!</span>
+		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Good job! Thank you for visiting my website</span>
 		  <button class="like-btn">Like</button>
 		</div>
 		<div class="comment-item">
-		  <span class="username">User2:</span> <span class="comment-content">Looks amazing!</span>
+		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Comments will be available soon!</span>
 		  <button class="like-btn">Like</button>
 		</div>
 		<!-- Additional comments can be added here -->

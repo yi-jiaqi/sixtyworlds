@@ -7,12 +7,6 @@ import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-let mode = 0;//0=>walk; 1=>fly
-let myConfig_Edit = {};
-let startPnt = { x: 0, y: 0, z: 0 };
-let rotation = { pitch: 0, yaw: 0, roll: 0 }
-
-
 const clock = new THREE.Clock();
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x88ccee);
@@ -22,7 +16,24 @@ camera.rotation.order = 'YXZ';
 const fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
 fillLight1.position.set(2, 1, 1);
 scene.add(fillLight1);
+
+const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+directionalLight.position.set(- 5, 25, - 1);
+directionalLight.castShadow = true;
+directionalLight.shadow.camera.near = 0.01;
+directionalLight.shadow.camera.far = 500;
+directionalLight.shadow.camera.right = 30;
+directionalLight.shadow.camera.left = - 30;
+directionalLight.shadow.camera.top = 30;
+directionalLight.shadow.camera.bottom = - 30;
+directionalLight.shadow.mapSize.width = 1024;
+directionalLight.shadow.mapSize.height = 1024;
+directionalLight.shadow.radius = 4;
+directionalLight.shadow.bias = - 0.00006;
+scene.add(directionalLight);
+
 const container = document.getElementById('container');
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -40,7 +51,7 @@ container.appendChild(stats.domElement);
 const GRAVITY = 30;
 const STEPS_PER_FRAME = 5;
 const worldOctree = new Octree();
-const playerCollider = new Capsule(new THREE.Vector3(startPnt.x, startPnt.y + 0.35, startPnt.z), new THREE.Vector3(startPnt.x, startPnt.y + 1, startPnt.z), 0.35);
+const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
 const playerVelocity = new THREE.Vector3();
 const playerDirection = new THREE.Vector3();
 
@@ -54,18 +65,6 @@ const vector2 = new THREE.Vector3();
 const vector3 = new THREE.Vector3();
 
 const loader = new GLTFLoader();
-
-/*
-   ###
-  ####
- ## ##
-	##
-	##
-	##
- #########
-Declaration & Properties
-*/
-
 let cameraData = [];
 document.addEventListener('keydown', (event) => {
 	keyStates[event.code] = true;
@@ -74,36 +73,36 @@ document.addEventListener('keyup', (event) => {
 	keyStates[event.code] = false;
 });
 container.addEventListener('mousedown', () => {
+
 	document.body.requestPointerLock();
+
 	mouseTime = performance.now();
+
 });
 document.addEventListener('mouseup', () => {
+
 	// if (document.pointerLockElement !== null) throwBall();
+
 });
 document.body.addEventListener('mousemove', (event) => {
+
 	if (document.pointerLockElement === document.body) {
+
 		camera.rotation.y -= event.movementX / 500;
 		camera.rotation.x -= event.movementY / 500;
+
 	}
+
 });
 window.addEventListener('resize', onWindowResize);
 function onWindowResize() {
+
 	camera.aspect = window.innerWidth / window.innerHeight;
 	camera.updateProjectionMatrix();
+
 	renderer.setSize(window.innerWidth, window.innerHeight);
+
 }
-
-/*
-   #####
-  ##   ##
-	   ##
-	  ##
-	##
-   ##
-  #########
-Controls, Collisions, Updates;
-*/
-
 function playerCollisions() {
 
 	const result = worldOctree.capsuleIntersect(playerCollider);
@@ -209,6 +208,7 @@ function controls(deltaTime) {
 	const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
 
 	if (keyStates['KeyW']) {
+
 		playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
 
 	}
@@ -242,31 +242,18 @@ function controls(deltaTime) {
 }
 
 function teleportPlayerIfOob() {
-	if (camera.position.y <= - 55) {
-		goBack()
-		console.log("OOB-teleported")
+
+	if (camera.position.y <= - 25) {
+
+		playerCollider.start.set(0, 0.35, 0);
+		playerCollider.end.set(0, 1, 0);
+		playerCollider.radius = 0.35;
+		camera.position.copy(playerCollider.end);
+		camera.rotation.set(0, 0, 0);
+
 	}
+
 }
-
-function goBack() {
-	playerCollider.start.set(startPnt.x, startPnt.y + 0.35, startPnt.z);
-	playerCollider.end.set(startPnt.x, startPnt.y + 1, startPnt.z);
-	playerCollider.radius = 0.35;
-	camera.position.copy(playerCollider.end);
-	camera.rotation.set(0, 0, 0);
-}
-
-/*
-   #####
-  ##   ##
-	   ##
-	####
-	   ##
-  ##   ##
-   #####
-Main Function
-*/
-
 
 function animate() {
 
@@ -290,18 +277,6 @@ function animate() {
 	stats.update();
 
 }
-
-/*
-	 ##
-	###
-   # ##
-  #  ##
- #######
-	 ##
-	 ##
-
-Traces
-*/
 
 
 // Function to capture the camera's position and rotation
@@ -448,20 +423,9 @@ function renderLines(lineArray, group) {
 	group.add(line);
 }
 
-/*
-  #######
-  ##
-  ##
-  ######
-	   ##
-  ##   ##
-   #####
-Wrap-up function for exporting
-*/
-
-
-export function loadModel(modelObject, isOnline = true) {
+export function loadModel(modelObject) {
 	console.log("Loading is now started")
+	// showLoadingGear()
 	let path = modelObject.model_url
 	loader.load(path, (gltf) => {
 		scene.add(gltf.scene);
@@ -475,9 +439,7 @@ export function loadModel(modelObject, isOnline = true) {
 				}
 			}
 		});
-		// console.log(gltf.scene.position);
-		// console.log(gltf.scene.scale);
-		// console.log(scene)
+
 		const helper = new OctreeHelper(worldOctree);
 		helper.visible = false;
 		scene.add(helper);
@@ -487,17 +449,69 @@ export function loadModel(modelObject, isOnline = true) {
 			.onChange(function (value) {
 				helper.visible = value;
 			});
+	},(xhr) => {
+		updateLoadingGear(xhr.loaded / xhr.total * 100)
 	});
+
+
+	// setInterval(logCameraPosition, 500);
+	/*
+	I decided to temporarily stop using traces.
+	*/
 }
 
-// setInterval(logCameraPosition, 500);
-/*
-I decided to temporarily stop using traces.
-*/
-// }
+// fetchAndRenderCSVData();
 
-
-
-export function testA() {
+export function testA(){
 	console.log("testA")
+}
+
+// Function to show the loading gear
+function showLoadingGear() {
+	const gear = document.createElement('div');
+	gear.id = 'loadingGear';
+	gear.style.width = '50px';
+	gear.style.height = '50px';
+	gear.style.border = '5px solid #ccc';
+	gear.style.borderTop = '5px solid #333';
+	gear.style.borderRadius = '50%';
+	gear.style.animation = 'spin 1s linear infinite';
+	gear.style.position = 'fixed';
+	gear.style.top = '50%';
+	gear.style.left = '50%';
+	gear.style.transform = 'translate(-50%, -50%)';
+
+	// Progress Text
+	const progressText = document.createElement('div');
+	progressText.id = 'loadingProgress';
+	progressText.style.position = 'absolute';
+	progressText.style.top = '60px';
+	progressText.style.left = '50%';
+	progressText.style.transform = 'translateX(-50%)';
+	progressText.style.color = '#333';
+	progressText.style.fontSize = '14px';
+	progressText.style.fontWeight = 'bold';
+	progressText.innerText = '0%';
+
+	// Append gear and progress text
+	gear.appendChild(progressText);
+	document.body.appendChild(gear);
+}
+
+// Function to hide the rotating gear
+function hideLoadingGear() {
+	const gear = document.getElementById('loadingGear');
+	if (gear) {
+		document.body.removeChild(gear);
+	}
+}
+
+// Function to update the loading progression
+function updateLoadingGear(progression) {
+	const progressText = document.getElementById('loadingProgress');
+	if (progressText) {
+		// Ensure progression is between 0 and 100
+		const displayProgress = Math.min(Math.max(progression, 0), 100);
+		progressText.innerText = `${displayProgress}%`;
+	}
 }

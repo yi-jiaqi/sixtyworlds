@@ -9,7 +9,8 @@ const cors = require('cors');
 app.use(cors());
 const csv = require('csv-parser');
 const fs = require('fs');
-const { S3Client, PutObjectCommand, GetObjectCommand,HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { PassThrough } = require("stream");
+const { S3Client, PutObjectCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { fromEnv } = require('@aws-sdk/credential-provider-env');
 const { fromNodeProviderChain } = require('@aws-sdk/credential-providers');
 const { middlewareRetry } = require('@aws-sdk/middleware-retry');
@@ -93,7 +94,7 @@ app.get('/api/user-state', (req, res) => {
 });
 
 app.get('/callback', async (req, res) => {
-    console.log('Handling /callback route');
+    console.log('[Validation]');
     try {
         // Extract the authorization code and state from the query parameters
         const params = client.callbackParams(req);
@@ -113,10 +114,41 @@ app.get('/callback', async (req, res) => {
         req.session.userInfo = userInfo; // Save user info in session
         // console.log(userInfo)
         const nickname = userInfo.nickname || "No nickname provided";
+        const author_uid = userInfo.sub;
 
-        console.log('User Nickname:', nickname);
-        // Mark user as authenticated
         req.session.isAuthenticated = true;
+
+        try {
+            let stream;
+            let isUIDFound = false;
+            let isNicknameCorrect = false;
+            stream = fs.createReadStream(csvFilePath_Authors).pipe(csv());
+            stream
+                .on('data', (data) => {
+                    if (data.UID == author_uid) {
+                        isUIDFound = true
+                        isNicknameCorrect = data.author_name == nickname
+                        console.log("UID found: " + author_uid)
+                        console.log("Nickname: " + nickname)
+                        if(!isNicknameCorrect) console.log("[Error] Nickname was: " + data.author_name)
+                    }
+                })
+                .on('end', async () => {
+                    if (!isUIDFound) {
+                        const newRow = `\n${nickname},${author_uid}`;
+                        fs.appendFileSync(csvFilePath_Authors, newRow, "utf8");
+                        console.log("UID NOT found, registering: " + author_uid)
+                        console.log("Nickname: " + nickname)
+                    }
+                })
+                .on('error', (error) => {
+                    console.error('Error reading CSV file:', error);
+                    res.status(500).json({ error: 'Error reading CSV file' });
+                });
+        } catch (error) {
+            console.error('Error processing request:', error);
+            res.status(500).json({ error: 'Error processing request' });
+        }
 
         // Redirect to the homepage or another route
         res.redirect('/');
@@ -209,6 +241,11 @@ app.get('/api/getPreviews', async (req, res) => {
     const number = parseInt(req.query.number) || 9; // Number of lines to read
     const sort = req.query.sort || 'time'; // sort can be 'time' / 'likes' / 'author' / 'search'
     const word = req.query.word; // If sort is 'author', word is the UID
+    if (sort == "author"){
+        console.log("get previews with UID: " + word )
+    } else{
+        console.log("get previews by: "+ sort)
+    }
 
     // Verify the CSV file exists
     if (!fs.existsSync(csvFilePath_Worlds)) {
@@ -220,8 +257,8 @@ app.get('/api/getPreviews', async (req, res) => {
         let stream;
         // Check if we're filtering by author UID
         if (sort === 'author' && word) {
-            const { results: authorResults } = await filterByAuthorUID(csvFilePath_Worlds, word, index, number);
-            return res.json(authorResults)
+            const author_UID = word
+            stream = await filterByAuthorUID(author_UID);
         } else {
             stream = fs.createReadStream(csvFilePath_Worlds).pipe(csv());
         }
@@ -253,7 +290,7 @@ app.get('/api/getPreviews', async (req, res) => {
                 const paginatedResults = await Promise.all(
                     results.map(async (item) => {
                         const previewImageKey = `${item.author_uid}-${item.serial}`;
-                        const previewImageUrl = await generatePresignedUrl(0,previewBucket, previewImageKey);
+                        const previewImageUrl = await generatePresignedUrl(0, previewBucket, previewImageKey);
                         const serial = item.serial;
                         const authorName = await getAuthorName(item.author_uid)
                         // const authorName = "test"
@@ -288,6 +325,32 @@ app.get('/api/getPreviews', async (req, res) => {
 });
 
 
+async function filterByAuthorUID(author_UID) {
+    console.log("trying to filter: " + author_UID)
+    const passThrough = new PassThrough({ objectMode: true });
+
+    fs.createReadStream(csvFilePath_Worlds)
+        .pipe(csv())
+        .on("data", (data) => {
+            if (data.author_uid === author_UID) {
+                // console.log("found one!")
+                passThrough.write(data); // Write matching rows to the stream
+            } else {
+
+                console.log(data.author_uid)
+            }
+        })
+        .on("end", () => {
+            passThrough.end(); // End the stream after processing
+        })
+        .on("error", (error) => {
+            console.error("Error reading CSV file:", error);
+            passThrough.destroy(error); // Destroy the stream on error
+        });
+        // console.log(passThrough)
+    return passThrough; // Return the filtered stream
+}
+
 /*
    #####
   ##   ##
@@ -300,22 +363,22 @@ Endpoint - updateAuthor + getAuthorName [NO LONGER NEEDED]
 */
 const getAuthorName = async (uid) => {
     return new Promise((resolve, reject) => {
-      const results = [];
-      fs.createReadStream(csvFilePath_Authors)
-        .pipe(csv())
-        .on('data', (data) => {
-          if (data.UID === uid) {
-            resolve(data.author_name); // Resolve with the author_name if UID is found
-          } else {
-            results.push(data); // Continue accumulating data for error checking
-          }
-        })
-        .on('end', () => {
-          reject(new Error('UID not found')); // Reject if UID was not found after reading all rows
-        })
-        .on('error', (error) => reject(new Error(`Error reading CSV file: ${error.message}`))); // Handle read errors
+        const results = [];
+        fs.createReadStream(csvFilePath_Authors)
+            .pipe(csv())
+            .on('data', (data) => {
+                if (data.UID === uid) {
+                    resolve(data.author_name); // Resolve with the author_name if UID is found
+                } else {
+                    results.push(data); // Continue accumulating data for error checking
+                }
+            })
+            .on('end', () => {
+                reject(new Error('UID not found')); // Reject if UID was not found after reading all rows
+            })
+            .on('error', (error) => reject(new Error(`Error reading CSV file: ${error.message}`))); // Handle read errors
     });
-  };
+};
 app.post('/api/updateAuthor', (req, res) => {
     const { displayName, userId } = req.body;
     // const csvFilePath_Authors = path.join(__dirname, 'authors.csv');
@@ -364,7 +427,7 @@ app.post('/api/updateAuthor', (req, res) => {
             res.status(500).send({ error: "Failed to read the CSV file." });
         });
 });
-app.get('/getAuthorName/:uid', async (req, res) => {
+app.get('/api/getAuthorName/:uid', async (req, res) => {
     const uid = req.params.uid;
     try {
         const data = await readAuthorCSV();
@@ -378,20 +441,60 @@ app.get('/getAuthorName/:uid', async (req, res) => {
         res.status(500).json({ error: 'Error reading CSV file' });
     }
 });
-app.get('/getAuthorUID/:serial', async (req, res) => {
-    const uid = req.params.uid;
-    try {
-        const data = await readAuthorCSV();
-        const entry = data.find((row) => row.serial === serial);
-        if (entry) {
-            res.json({ author_uid: entry.author_uid });
+app.get('/api/getAuthorUID/:serial', async (req, res) => {
+    const serial = req.params.serial;
+    console.log("Trying to get author UID by serial: "+serial)
+    getItembySerial(serial)
+    .then((data) => {
+        console.log("Resolved data:", data);
+        if (data && data.author_uid) {
+            res.status(200).json({ author_uid: data.author_uid });
         } else {
-            res.status(404).json({ error: 'serial not found' });
+            res.status(404).json({ error: "No data found for the provided serial." });
         }
-    } catch (error) {
-        res.status(500).json({ error: 'Error reading CSV file' });
-    }
+    })
+    .catch((error) => {
+        console.error("Error resolving getItembySerial:", error.message);
+        res.status(500).json({ error: "Error resolving serial data" });
+    });
 });
+
+function getItembySerial(lineNumber) {
+    console.log("getItembySerial: "+ lineNumber)
+    return new Promise((resolve, reject) => {
+        let currentLine = 0; // Track the current line
+        const targetLine = Number(lineNumber) + 2; // Calculate the target line
+        let result = null;
+
+        // Create a readable stream to process the CSV
+        fs.createReadStream(csvFilePath_Worlds)
+            .pipe(csv()) // Use csv-parser to parse the file
+            .on("data", (data) => {
+                currentLine++;
+                console.log(data)
+                if (currentLine == targetLine) {
+                    result = data; // Store the matching row
+                }
+            })
+            .on("end", () => {
+                if (result) {
+                    resolve(result); // Resolve with the matching row as an object
+                    console.log(result)
+                } else {
+                    reject(
+                        new Error(
+                            `No data found at line ${targetLine}. Check the file length.`
+                        )
+                    );
+                }
+            })
+            .on("error", (error) => {
+                reject(new Error("Error reading CSV file: " + error.message));
+            });
+    });
+}
+
+
 
 
 /*
@@ -430,7 +533,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
                     stream.destroy(); // Stop reading the CSV file
 
                     try {
-                        const model_url = await generatePresignedUrl(1,modelBucket, modelSerial);
+                        const model_url = await generatePresignedUrl(1, modelBucket, modelSerial);
                         console.log("Successfully generated " + model_url);
 
                         data.model_url = model_url;
@@ -482,7 +585,7 @@ AWS S3 - Preasssinged URLs + findFileKey
 
 async function generatePresignedUrl(type, bucket, baseKey) {//type: 0=>Preview; 1=>Models
     try {
-        
+
         let key = await findFileKey(type, bucket, baseKey);
         // console.log(key)
         // Create the command for the presigned URL
@@ -501,7 +604,7 @@ async function generatePresignedUrl(type, bucket, baseKey) {//type: 0=>Preview; 
 }
 
 
-async function findFileKey(type,bucket, baseKey) {
+async function findFileKey(type, bucket, baseKey) {
 
     let possibleExtensions = type === 1 ? ['.glb', '.gltf'] : type === 0 ? ['.jpeg', '.jpg', '.png'] : undefined;
     // console.log(possibleExtensions)
@@ -605,48 +708,48 @@ Save & Give Trace data
 app.post('/save-camera-data', (req, res) => {
     // Log the raw content of the request body as soon as it's received
     // console.log('Received raw data:', req.body);
-  
+
     let csvData = req.body;
-  
+
     // Check if the received data is a string
     if (typeof csvData !== 'string') {
-      console.error('Error: Data received is not a string:', csvData);
-      return res.status(400).send('Invalid data format: Expected a string.');
+        console.error('Error: Data received is not a string:', csvData);
+        return res.status(400).send('Invalid data format: Expected a string.');
     }
-  
+
     // Get the current date and time for the file name
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().replace(/[:.]/g, '-');
-  
+
     // Define the path to save the CSV file
     const filePath = path.join(__dirname, 'path', `camera_data_${formattedDate}.csv`);
-  
+
     // Log the path for saving the CSV file
     console.log('Saving CSV file to:', filePath);
-  
+
     // Write the CSV data to a file
     fs.writeFile(filePath, csvData, (err) => {
-      if (err) {
-        console.error('Error saving CSV file:', err);
-        return res.status(500).send('Failed to save data');
-      }
-      console.log('CSV file saved successfully');
-      res.status(200).send('Data saved');
+        if (err) {
+            console.error('Error saving CSV file:', err);
+            return res.status(500).send('Failed to save data');
+        }
+        console.log('CSV file saved successfully');
+        res.status(200).send('Data saved');
     });
-  });
+});
 
-  app.get('/get-csv-data', (req, res) => {
+app.get('/get-csv-data', (req, res) => {
     const directoryPath = path.join(__dirname, 'path');
-  
+
     readCSVFiles(directoryPath, (data) => {
-      if (data.length === 0) {
-        // Handle case where no data is found
-        return res.status(404).json({ error: 'No CSV files found or unable to read files' });
-      }
-  
-      res.json(data);  // Send the parsed data back to the client as JSON
+        if (data.length === 0) {
+            // Handle case where no data is found
+            return res.status(404).json({ error: 'No CSV files found or unable to read files' });
+        }
+
+        res.json(data);  // Send the parsed data back to the client as JSON
     });
-  });
+});
 
 /*
    #####

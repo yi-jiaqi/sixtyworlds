@@ -10,7 +10,8 @@
 			"three": "../build/three.module.js",
 			"three/addons/": "../jsm/"
 		  }
-		}</script>
+		}
+		</script>
 	<script type="module">
 		/*
 		TODO for tour's index.html
@@ -35,15 +36,14 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { fetchUserState, getAuthorUIDBySerial, getModelData_Cloud, createConfigUI, createCommentUI } from './script.js';
+		import { fetchUserState, getAuthorUIDBySerial, getModelData_Cloud, createConfigUI, createCommentUI,showLoadingGear,hideLoadingGear } from './script.js';
 		import { loadModel } from './load.js';
 		let { isAuthenticated, userInfo } = await fetchUserState()
 		const { serial, blobUrl } = getQueryParams_Serial();
 		let imTheAuthur;
-		// let myUID= userInfo.sub;
+		let myUID = userInfo.sub;
 		let authorUID;
 		let model_Object;
-
 
 		/*
 			 ##
@@ -97,16 +97,20 @@
 				author_UID: userInfo.sub,
 				author_Name: userInfro.nickname,
 				upload_Date: currentDate,
-				likes:0,
+				likes: 0,
 			}
-			loadModel(model_Object,false)
+			loadModel(model_Object, false)
 
 		} else {//load cloud,
 			getModelData_Cloud(serial).then(data => {
 				if (data) {
 					model_Object = data
 					// Handle the parsed data object
-					loadModel(data)
+					showLoadingGear();
+					loadModel(data, () => {
+						console.log("Model loaded successfully!");
+						hideLoadingGear(); // Example function to hide loading UI
+					})
 				}
 			});
 		}

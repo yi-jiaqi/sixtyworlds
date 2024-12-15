@@ -18,6 +18,8 @@
 		const itemsPerPage = 9;
 		const myWorldsButton = document.getElementById('myWorldsButton');
 		let { isAuthenticated, userInfo } = await fetchUserState()
+		const author_name = userInfo.nickname
+		const author_UID = userInfo.sub
 
 
 		/*
@@ -37,11 +39,12 @@
 
 
 		if (isAuthenticated && userInfo) {
+			console.log("[Authenticated]")
 			myWorldsButton.textContent = `My Worlds - ${userInfo.nickname}`;
 
 
 			const observer = initializeObserver();
-			loadPreviews(observer,'author_name',userInfo.sub);
+			loadPreviews(observer,'author',userInfo.sub);
 		} else {
 			myWorldsButton.textContent = `My Worlds - ERROR`;
 		}
@@ -61,7 +64,7 @@
 
 		window.onload = function () {
 			const observer = initializeObserver();
-			loadPreviews(observer); // Initial preview load with observer
+			loadPreviews(observer,'author',author_UID); // Initial preview load with observer
 
 		};
 
@@ -90,7 +93,7 @@
 		function loadMorePreviews(entries, observer) {
 			entries.forEach(entry => {
 				if (entry.isIntersecting) {
-					loadPreviews(observer);
+					loadPreviews(observer,'author',author_UID);
 				}
 			});
 		}
@@ -105,7 +108,12 @@
 		   #####
 		Opening the model - In the control mode!
 		*/
-		document.getElementById('uploadBtn').addEventListener('click', openUploadWindow);
+		// document.getElementById('uploadBtn').addEventListener('click', openUploadWindow);
+		document.getElementById('uploadBtn').addEventListener('click', popup);
+
+		function popup(){
+			alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
+		}
 
 	</script>
 </head>
