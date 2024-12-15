@@ -2,7 +2,9 @@
 ## Updated 12-15 Winter Show!
 Hi! This is **Jiaqi Yi** from **NYU-ITP**, this is my Thesis project. 
 Don't miss it if you are also a *GAME DESIGNER* or an *ARCHITECT*!
+
 [Visit it](https://sixtyworlds.com)
+
 [My personal website](https://whyjq.com)
 
 **Here you can:**
