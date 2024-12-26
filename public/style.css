@@ -273,13 +273,13 @@ footer {
 /* Config UI specific styling */
 .config-ui {
   left: 0;
-  width: 12.5vw; /* 1/8 of the viewport */
+  width: 20vw; /* 1/8 of the viewport */
 }
 
 /* Comment UI specific styling */
 .comment-ui {
   right: 0;
-  width: 16.67vw; /* 1/6 of the viewport */
+  width: 20vw; /* 1/6 of the viewport */
 }
 
 /* Additional styles for elements */
@@ -298,11 +298,13 @@ footer {
 .primary-btn,
 .secondary-btn,
 .like-btn,
-.send-btn {
+.minor-btn {
   padding: 5px 10px;
   border: none;
   cursor: pointer;
   border-radius: 3px;
+  margin-right: 10px; /* Add margin between buttons */
+  margin-bottom: 10px;
 }
 
 .primary-btn {
@@ -316,7 +318,7 @@ footer {
 }
 
 .like-btn,
-.send-btn {
+.minor-btn {
   background-color: #28a745;
   color: #fff;
 }

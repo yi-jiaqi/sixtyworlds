@@ -422,42 +422,65 @@ function renderLines(lineArray, group) {
 	const line = new THREE.LineSegments(lineGeometry, lineMaterial);
 	group.add(line);
 }
+export function loadModel(modelObject, onComplete) {
+	console.log("Loading is now started");
+	showLoadingGear();
+	let path = modelObject.model_url;
 
-export function loadModel(modelObject) {
-	console.log("Loading is now started")
-	// showLoadingGear()
-	let path = modelObject.model_url
-	loader.load(path, (gltf) => {
-		scene.add(gltf.scene);
-		worldOctree.fromGraphNode(gltf.scene);
-		gltf.scene.traverse(child => {
-			if (child.isMesh) {
-				child.castShadow = true;
-				child.receiveShadow = true;
-				if (child.material.map) {
-					child.material.map.anisotropy = 4;
+	loader.load(
+		path,
+		(gltf) => {
+			try {
+				// Critical part of loading logic
+				scene.add(gltf.scene);
+				worldOctree.fromGraphNode(gltf.scene);
+
+				// Traverse the loaded model
+				gltf.scene.traverse((child) => {
+					if (child.isMesh) {
+						child.castShadow = true;
+						child.receiveShadow = true;
+						if (child.material.map) {
+							child.material.map.anisotropy = 4;
+						}
+					}
+				});
+
+				// Add debugging helper
+				const helper = new OctreeHelper(worldOctree);
+				helper.visible = false;
+				scene.add(helper);
+
+				// GUI Setup
+				const gui = new GUI({ width: 200 });
+				gui.add({ debug: false }, "debug").onChange(function (value) {
+					helper.visible = value;
+				});
+			} catch (error) {
+				// Catch and log minor errors, but do not block completion
+				console.error("Minor error during model processing:", error);
+			} finally {
+				// Ensure the completion callback is always called
+				if (onComplete) {
+					onComplete();
 				}
 			}
-		});
+		},
+		// Progress callback
+		(xhr) => {
+			const percentLoaded = (xhr.loaded / xhr.total) * 100;
+			updateLoadingGear(percentLoaded); // Update loading progress
+		},
+		// Error callback
+		(error) => {
+			console.error("An error occurred while loading the model:", error);
 
-		const helper = new OctreeHelper(worldOctree);
-		helper.visible = false;
-		scene.add(helper);
-
-		const gui = new GUI({ width: 200 });
-		gui.add({ debug: false }, 'debug')
-			.onChange(function (value) {
-				helper.visible = value;
-			});
-	},(xhr) => {
-		updateLoadingGear(xhr.loaded / xhr.total * 100)
-	});
-
-
-	// setInterval(logCameraPosition, 500);
-	/*
-	I decided to temporarily stop using traces.
-	*/
+			// Ensure completion callback is still called in case of load failure
+			if (onComplete) {
+				onComplete();
+			}
+		}
+	);
 }
 
 // fetchAndRenderCSVData();
@@ -494,7 +517,7 @@ function showLoadingGear() {
 	progressText.innerText = '0%';
 
 	// Append gear and progress text
-	gear.appendChild(progressText);
+	document.body.appendChild(progressText);
 	document.body.appendChild(gear);
 }
 

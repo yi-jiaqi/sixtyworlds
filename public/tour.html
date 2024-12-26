@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>Welcome to the 60 Worlds!</title>
+	<title>Sixty Worlds - Winter Show Prototype!</title>
 	<link rel="stylesheet" href="/style.css">
 	<script type="importmap">
 		{
@@ -36,13 +36,15 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { fetchUserState, getAuthorUIDBySerial, getModelData_Cloud, createConfigUI, createCommentUI,showLoadingGear,hideLoadingGear } from './script.js';
+		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud, createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear } from './script.js';
 		import { loadModel } from './load.js';
 		let { isAuthenticated, userInfo } = await fetchUserState()
 		const { serial, blobUrl } = getQueryParams_Serial();
 		let imTheAuthur;
-		let myUID = userInfo.sub;
-		let authorUID;
+		let myUID
+		if (userInfo && userInfo.sub) { myUID = userInfo.sub } else { myUID = 'missing' }
+		let authorUID = await getAuthorInfoBySerial(serial);
+		// let author_name = authorInfo.author_name;
 		let model_Object;
 
 		/*
@@ -95,7 +97,7 @@
 			model_Object = {
 				model_url: blobUrl,
 				author_UID: userInfo.sub,
-				author_Name: userInfro.nickname,
+				author_Name: userInfo.nickname,
 				upload_Date: currentDate,
 				likes: 0,
 			}
@@ -105,33 +107,39 @@
 			getModelData_Cloud(serial).then(data => {
 				if (data) {
 					model_Object = data
+
 					// Handle the parsed data object
-					showLoadingGear();
+					// showLoadingGear();
 					loadModel(data, () => {
 						console.log("Model loaded successfully!");
-						hideLoadingGear(); // Example function to hide loading UI
+						hideLoadingGear();
+						// Example function to hide loading UI
+						if (serial == 'missing' || serial == undefined) {
+							authorUID = userInfo.sub
+						}
+
+						if (serial === 'missing' && serial != undefined) {
+							imTheAuthur = true
+						} else {
+							imTheAuthur = authorUID == myUID
+						}
+
+						if (imTheAuthur) {
+							console.log("[Validated] The user is the authur")
+							// createConfigUI(model_Object)
+						} else {
+							console.log("[Validated] The user is Not the authur")
+						}
+						createConfigUI(model_Object)
+						createCommentUI()
 					})
 				}
 			});
 		}
 
-		if (serial !== 'missing' && serial != undefined) {
-			authorUID = await getAuthorUIDBySerial(serial)
-		} else {
-			authorUID = userInfo.sub
-		}
 
-		if (serial === 'missing' && serial != undefined) { imTheAuthur = true } else {
-			imTheAuthur = authorUID == myUID
-		}
 
-		if (imTheAuthur) {
-			console.log("[Validated] The user is the authur")
-			createConfigUI()
-		} else {
-			console.log("[Validated] The user is Not the authur")
-		}
-		createCommentUI()
+
 
 
 

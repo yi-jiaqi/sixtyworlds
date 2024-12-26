@@ -28,7 +28,7 @@ const s3 = new S3Client({
 // console.log(process.env.AWS_SECRET_ACCESS_KEY)
 const csvFilePath_Worlds = 'worlds.csv'
 const csvFilePath_Authors = 'authors.csv'
-const destination_login = 'http://localhost:3000/callback'
+const destination_login = 'http://sixtyworlds.com/callback'
 const previewBucket = 'sixtyworlds-previews'
 const modelBucket = 'sixtyworlds-models'
 /*
@@ -130,7 +130,7 @@ app.get('/callback', async (req, res) => {
                         isNicknameCorrect = data.author_name == nickname
                         console.log("UID found: " + author_uid)
                         console.log("Nickname: " + nickname)
-                        if(!isNicknameCorrect) console.log("[Error] Nickname was: " + data.author_name)
+                        if (!isNicknameCorrect) console.log("[Error] Nickname was: " + data.author_name)
                     }
                 })
                 .on('end', async () => {
@@ -210,8 +210,12 @@ app.get(getPathFromURL(destination_login), async (req, res) => {
     }
 });
 
+
 // Logout route
 app.get('/logout', (req, res) => {
+    /*
+    Seems need to be updated from localhost to sixtyworlds
+    */
     req.session.destroy();
     const logoutUrl = `https://us-east-2arf7gdgij.auth.us-east-2.amazoncognito.com/login?client_id=igqvrbfgkacjbh81g2a7vfse4&response_type=code&scope=email+openid+phone+profile&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fcallback`;
     res.redirect(logoutUrl);
@@ -241,10 +245,10 @@ app.get('/api/getPreviews', async (req, res) => {
     const number = parseInt(req.query.number) || 9; // Number of lines to read
     const sort = req.query.sort || 'time'; // sort can be 'time' / 'likes' / 'author' / 'search'
     const word = req.query.word; // If sort is 'author', word is the UID
-    if (sort == "author"){
-        console.log("get previews with UID: " + word )
-    } else{
-        console.log("get previews by: "+ sort)
+    if (sort == "author") {
+        console.log("get previews with UID: " + word)
+    } else {
+        console.log("get previews by: " + sort)
     }
 
     // Verify the CSV file exists
@@ -347,7 +351,7 @@ async function filterByAuthorUID(author_UID) {
             console.error("Error reading CSV file:", error);
             passThrough.destroy(error); // Destroy the stream on error
         });
-        // console.log(passThrough)
+    // console.log(passThrough)
     return passThrough; // Return the filtered stream
 }
 
@@ -443,24 +447,27 @@ app.get('/api/getAuthorName/:uid', async (req, res) => {
 });
 app.get('/api/getAuthorUID/:serial', async (req, res) => {
     const serial = req.params.serial;
-    console.log("Trying to get author UID by serial: "+serial)
+    console.log("Trying to get author UID by serial: " + serial)
     getItembySerial(serial)
-    .then((data) => {
-        console.log("Resolved data:", data);
-        if (data && data.author_uid) {
-            res.status(200).json({ author_uid: data.author_uid });
-        } else {
-            res.status(404).json({ error: "No data found for the provided serial." });
-        }
-    })
-    .catch((error) => {
-        console.error("Error resolving getItembySerial:", error.message);
-        res.status(500).json({ error: "Error resolving serial data" });
-    });
+        .then(async (data) => {
+            console.log("Resolved data:", data);
+
+            const authorName = await getAuthorName(data.author_uid)
+            data.author_name = authorName
+            if (data && data.author_uid) {
+                res.status(200).json(data);
+            } else {
+                res.status(404).json({ error: "No data found for the provided serial." });
+            }
+        })
+        .catch((error) => {
+            console.error("Error resolving getItembySerial:", error.message);
+            res.status(500).json({ error: "Error resolving serial data" });
+        });
 });
 
 function getItembySerial(lineNumber) {
-    console.log("getItembySerial: "+ lineNumber)
+    console.log("getItembySerial: " + lineNumber)
     return new Promise((resolve, reject) => {
         let currentLine = 0; // Track the current line
         const targetLine = Number(lineNumber) + 2; // Calculate the target line
@@ -536,6 +543,9 @@ app.get('/api/getModel/:serial', async (req, res) => {
                         const model_url = await generatePresignedUrl(1, modelBucket, modelSerial);
                         console.log("Successfully generated " + model_url);
 
+                        const authorName = await getAuthorName(data.author_uid)
+                        console.log(data)
+                        data.author_name=authorName
                         data.model_url = model_url;
                         if (!isResponded) {
                             isResponded = true; // Prevent duplicate responses

@@ -37,7 +37,8 @@ export function loadPreviews(observer, sort = 'time', word = '') {
 					// Display the "End of the Worlds" message if isEnd is encountered
 					console.log("End of the Worlds!");
 					const endMessage = document.createElement('div');
-					if (sort == "author") { endMessage.textContent = " Empty! Would you upload your amazing worlds?"; } else {endMessage.textContent = "Congrats! You are now at the end of the worlds.";
+					if (sort == "author") { endMessage.textContent = " Empty! Would you upload your amazing worlds?"; } else {
+						endMessage.textContent = "Congrats! You are now at the end of the worlds.";
 
 					}
 					endMessage.className = 'end-message';
@@ -165,7 +166,6 @@ export async function getModelData_Cloud(serial) {
 			throw new Error('Failed to fetch model data');
 		}
 		const modelData = await response.json();
-
 		return modelData; // Return the parsed object
 	} catch (error) {
 		console.error('Error fetching model data:', error);
@@ -306,14 +306,14 @@ export async function fetchUserState() {
 }
 
 
-export async function getAuthorUIDBySerial(serial) {
+export async function getAuthorInfoBySerial(serial) {
 	//This is the first function, in order to validate the user is the author.
 	const response = await fetch(`/api/getAuthorUID/${serial}`);
 	console.log(response)
 	if (response.ok) {
 		const data = await response.json();
 		// console.log(data.author_uid)
-		return data.author_uid;
+		return data;
 	} else {
 		throw new Error('Author not found');
 	}
@@ -389,9 +389,9 @@ export function showLoadingGear() {
 // Function to hide the rotating gear
 export function hideLoadingGear() {
 	const gear = document.getElementById('loadingGear');
-	if (gear) {
-		document.body.removeChild(gear);
-	}
+	const progressText = document.getElementById('loadingProgress');
+	if (gear) document.body.removeChild(gear);
+	if (progressText) document.body.removeChild(progressText);
 }
 
 // Function to update the loading progression
@@ -415,21 +415,32 @@ document.head.appendChild(style);
 
 
 
-export function createConfigUI() {
-	// Create the config UI element
+export function createConfigUI(model_Object) {
+	/*
+	This is a temporaty Winter Show adaptation
+	*/
+
+	// Parse keywords string into an array
+	let keywordsArray = [];
+	try {
+		keywordsArray = JSON.parse(model_Object.keywords.replace(/'/g, '"'));
+	} catch (error) {
+		console.error("Failed to parse keywords:", error);
+		keywordsArray = ["Invalid format"];
+	}
 
 	const configUI = document.createElement("div");
 	configUI.className = "floating-ui config-ui";
 	configUI.innerHTML = `
 
-	<h1>World Configuration</h1>
-	  <button id="starting-point" class="config-button">Set as Start Point</button>
-	  <button id="change-mode" class="config-button">Fly Mode</button>
-	  <div class="content">
-<label for="model_name">Name:</label>
-<input type="text" id="model_name" name="model_name" placeholder="A Fantastic World!" />
-	  </div>
-	  <button class="upload-button">Upload</button>
+	<h3>${model_Object.model_name}</h3>
+	<p><strong>Author:</strong> ${model_Object.author_name}</p>
+	<p><strong>Upload Date:</strong> ${model_Object.upload_date}</p>
+	<p><strong>Keywords:</strong> ${keywordsArray.join(", ")}</p>
+	<p><strong>Likes:</strong> ${model_Object.likes}</p>
+	  <button id="change-color" class="minor-btn">Change Color</button>
+	  <button id="change-mode" class="minor-btn">Fly Mode</button>
+	  <button id="upload-world" class="minor-btn">Upload</button>
 	`;
 
 	const container = document.getElementById("container");
@@ -437,19 +448,20 @@ export function createConfigUI() {
 	// console.log(configUI)
 	container.appendChild(configUI);
 
-	document.getElementById("starting-point").addEventListener("click", () => {
-		setAsStartingPoint()
-	});
+	// document.getElementById("starting-point").addEventListener("click", () => {
+	// 	setAsStartingPoint()
+	// });
 
 	document.getElementById("change-mode").addEventListener("click", () => {
 		console.log("Fly Mode clicked");
 		// Add logic for toggling fly mode text
 	});
 
-	document.querySelector(".upload-button").addEventListener("click", () => {
+	document.getElementById("upload-world").addEventListener("click", () => {
 		const modelName = document.getElementById("model_name").value;
 		console.log(`Uploading: ${modelName}`);
-		// Add logic for uploading
+		alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
+
 	});
 }
 
@@ -459,20 +471,17 @@ export function createCommentUI() {
 	const commentUI = document.createElement("div");
 	commentUI.className = "floating-ui comment-ui";
 	commentUI.innerHTML = `
-	  <h4>Title</h4>
+	  <h4>Comments</h4>
 	  <div class="comments">
 		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Good job! Thank you for visiting my website</span>
-		  <button class="like-btn">Like</button>
+		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Thank you for visiting my website!</span>
 		</div>
 		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Comments will be available soon!</span>
-		  <button class="like-btn">Like</button>
+		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">It is still under construction!</span>
 		</div>
-		<!-- Additional comments can be added here -->
 		<div class="comment-input">
-		  <input type="text" placeholder="Type your comment" class="comment-box" />
-		  <button class="send-btn">Send</button>
+		  <input type="text" placeholder="Commenting will be soon available" class="comment-box" />
+		  <button class="minor-btn">Send</button>
 		</div>
 	  </div>
 	`;
