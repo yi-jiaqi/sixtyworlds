@@ -48,7 +48,7 @@ stats.domElement.style.position = 'absolute';
 stats.domElement.style.top = '0px';
 container.appendChild(stats.domElement);
 
-const GRAVITY = 30;
+const GRAVITY = 30; 
 const STEPS_PER_FRAME = 5;
 const worldOctree = new Octree();
 const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);

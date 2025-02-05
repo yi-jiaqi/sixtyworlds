@@ -219,22 +219,19 @@ export function openUploadWindow() {
 		const reader = new FileReader();
 
 		reader.onload = function () {
-			const arrayBuffer = reader.result; // ArrayBuffer
+			const arrayBuffer = reader.result;
 			const fileName = file.name;
 			const fileExtension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
-
-			// Determine the MIME type based on file extension
 			const mimeType = fileExtension === '.glb' ? 'model/gltf-binary' : 'application/json';
-
-			// Create a Blob and a Blob URL
 			const blob = new Blob([arrayBuffer], { type: mimeType });
-			const blobUrl = URL.createObjectURL(blob);
 
-			console.log('Blob URL created:', blobUrl);
+			// Open the editor page
+			const editorWindow = window.open('/tour.html', '_blank');
 
-			// Open a new tab with the Blob URL passed as a query parameter
-			const encodedBlobUrl = encodeURIComponent(blobUrl);
-			window.open(`/tour.html?blobUrl=${encodedBlobUrl}`, '_blank');
+			// Transfer the file data via postMessage
+			editorWindow.onload = () => {
+				editorWindow.postMessage({ fileName, blob }, window.location.origin);
+			};
 		};
 
 		// Read the file as ArrayBuffer to support both .glb and .gltf
@@ -388,6 +385,7 @@ export function showLoadingGear() {
 
 // Function to hide the rotating gear
 export function hideLoadingGear() {
+	console.log("Trying to hide loading gear")
 	const gear = document.getElementById('loadingGear');
 	const progressText = document.getElementById('loadingProgress');
 	if (gear) document.body.removeChild(gear);
@@ -415,54 +413,93 @@ document.head.appendChild(style);
 
 
 
-export function createConfigUI(model_Object) {
+export function createConfigUI(model_Object, editMode = false) {
 	/*
 	This is a temporaty Winter Show adaptation
 	*/
 
 	// Parse keywords string into an array
 	let keywordsArray = [];
-	try {
-		keywordsArray = JSON.parse(model_Object.keywords.replace(/'/g, '"'));
-	} catch (error) {
-		console.error("Failed to parse keywords:", error);
-		keywordsArray = ["Invalid format"];
+	if (!editMode) {
+		try {
+			keywordsArray = JSON.parse(model_Object.keywords.replace(/'/g, '"'));
+		} catch (error) {
+			console.error("Failed to parse keywords:", error);
+			keywordsArray = ["Invalid format"];
+		}
 	}
+	const keywordsString = keywordsArray.join(", ");
 
 	const configUI = document.createElement("div");
 	configUI.className = "floating-ui config-ui";
-	configUI.innerHTML = `
+	if (editMode) {
 
-	<h3>${model_Object.model_name}</h3>
-	<p><strong>Author:</strong> ${model_Object.author_name}</p>
-	<p><strong>Upload Date:</strong> ${model_Object.upload_date}</p>
-	<p><strong>Keywords:</strong> ${keywordsArray.join(", ")}</p>
-	<p><strong>Likes:</strong> ${model_Object.likes}</p>
-	  <button id="change-color" class="minor-btn">Change Color</button>
-	  <button id="change-mode" class="minor-btn">Fly Mode</button>
-	  <button id="upload-world" class="minor-btn">Upload</button>
-	`;
+		configUI.innerHTML = `
+			<h3>Edit Model Details</h3>
+
+			<div class="form-group">
+				<label for="model-name"><strong>Model Name:</strong></label>
+				<input type="text" id="model-name" placeholder="${model_Object.model_name}" class="input-field" />
+			</div>
+
+			<div class="form-group">
+				<label for="author-name"><strong>Author:</strong></label>
+				<input type="text" id="author-name" placeholder="${model_Object.author_name}" class="input-field" />
+			</div>
+
+			<div class="form-group">
+				<label for="upload-date"><strong>Upload Date:</strong></label>
+				<input type="date" id="upload-date" value="${model_Object.upload_date}" class="input-field" />
+			</div>
+
+			<div class="form-group">
+				<label for="keywords"><strong>Keywords:</strong></label>
+				<input type="text" id="keywords" placeholder="Enter keywords" class="input-field" />
+			</div>
+
+			<div class="button-group">
+				<!-- Buttons for Edit Mode -->
+				<button class="main-button" id="save-changes">Save Changes</button>
+				<button class="main-button" id="upload">Upload</button>
+				<button class="config-button" id="fly-walk">Fly/Walk</button>
+				<button class="config-button" id="day-night">Day/Night</button>
+				<button class="cancel-button" id="cancel">Cancel</button>
+			</div>
+		`;
+	} else {
+		configUI.innerHTML = `
+            <h3>${model_Object.model_name || "Untitled"}</h3>
+            <p><strong>Author:</strong> ${model_Object.author_name || "Anonymous"}</p>
+            <p><strong>Upload Date:</strong> ${model_Object.upload_date || "yyyy.mm.dd"}</p>
+            <p><strong>Keywords:</strong> ${keywordsString}</p>
+            <p><strong>Likes:</strong> ${model_Object.likes || 0}</p>
+
+            <div class="button-group">
+                <button class="config-button" id="fly-walk">Fly/Walk</button>
+                <button class="config-button" id="day-night">Day/Night</button>
+                <button class="cancel-button" id="back">Back</button>
+            </div>
+		`;
+	}
 
 	const container = document.getElementById("container");
-	// console.log(container)
-	// console.log(configUI)
 	container.appendChild(configUI);
 
 	// document.getElementById("starting-point").addEventListener("click", () => {
 	// 	setAsStartingPoint()
 	// });
 
-	document.getElementById("change-mode").addEventListener("click", () => {
-		console.log("Fly Mode clicked");
-		// Add logic for toggling fly mode text
-	});
+	// document.getElementById("change-mode").addEventListener("click", () => {
+	// 	console.log("Fly Mode clicked");
+	// 	// Add logic for toggling fly mode text
+	// });
 
-	document.getElementById("upload-world").addEventListener("click", () => {
-		const modelName = document.getElementById("model_name").value;
-		console.log(`Uploading: ${modelName}`);
-		alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
+	// document.getElementById("upload-world").addEventListener("click", () => {
+	// 	const modelName = document.getElementById("model_name").value;
+	// 	console.log(`Uploading: ${modelName}`);
+	// 	alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
 
-	});
+	// });
 }
 
 

@@ -108,12 +108,22 @@
 		   #####
 		Opening the model - In the control mode!
 		*/
-		// document.getElementById('uploadBtn').addEventListener('click', openUploadWindow);
-		document.getElementById('uploadBtn').addEventListener('click', popup);
+		document.getElementById('uploadBtn').addEventListener('click', openUploadWindow);
+		// document.getElementById('uploadBtn').addEventListener('click', popup);
 
 		function popup(){
 			alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
 		}
+		/*
+		Opening Process:
+		1.function openUploadWindow()
+			1-1. fileInput.onchange
+			1-2. reader.onload
+			1-3. blob
+			1-4. window.open(`/tour.html?blobUrl=${encodedBlobUrl}`, '_blank');
+		2.tour.html
+			2-1. 
+		*/
 
 	</script>
 </head>
