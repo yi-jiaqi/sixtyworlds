@@ -240,7 +240,7 @@ export function openUploadWindow() {
 
 				setTimeout(() => {
 					console.log("Sending delayed message...");
-					editorWindow.postMessage({ fileName, blob }, "${BASE_URL}");//change to the server address
+					editorWindow.postMessage({ fileName, blob }, `${BASE_URL}`);//change to the server address
 				}, 500);
 
 			};
@@ -269,7 +269,7 @@ function uploadFileToS3(file, serial) {
 
 export async function finalUpload(model_Object) {
 	try {
-		const response = await fetch('http://${BASE_URL}/upload-model', {
+		const response = await fetch(`${BASE_URL}/upload-model`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

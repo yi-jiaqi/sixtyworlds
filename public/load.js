@@ -316,7 +316,7 @@ function sendDataToServer() {
 
 	console.log('Sending CSV data to server:', csvData);  // Add logging to verify this
 
-	fetch('http://${BASE_URL}/save-camera-data', {
+	fetch(`${BASE_URL}/save-camera-data`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'text/csv',  // Ensure the correct content type
@@ -339,7 +339,7 @@ function sendDataToServer() {
 // });
 
 async function fetchAndRenderCSVData() {
-	const response = await fetch('http://${BASE_URL}/get-csv-data');
+	const response = await fetch(`${BASE_URL}/get-csv-data`);
 	const data = await response.json();  // Receive the parsed CSV data as JSON
 	console.log(data);
 

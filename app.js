@@ -29,7 +29,7 @@ const s3 = new S3Client({
 // console.log(process.env.AWS_SECRET_ACCESS_KEY)
 const csvFilePath_Worlds = 'worlds.csv'
 const csvFilePath_Authors = 'authors.csv'
-const destination_login = 'http://${BASE_URL}/callback'
+const destination_login = `${BASE_URL}/callback`
 const previewBucket = 'sixtyworlds-previews'
 const modelBucket = 'sixtyworlds-models'
 /*
@@ -218,7 +218,7 @@ app.get('/logout', (req, res) => {
     Seems need to be updated from localhost to sixtyworlds
     */
     req.session.destroy();
-    const logoutUrl = `https://us-east-2arf7gdgij.auth.us-east-2.amazoncognito.com/logout?client_id=igqvrbfgkacjbh81g2a7vfse4&logout_uri=http://${BASE_URL}`;
+    const logoutUrl = `https://us-east-2arf7gdgij.auth.us-east-2.amazoncognito.com/logout?client_id=igqvrbfgkacjbh81g2a7vfse4&logout_uri=${BASE_URL}`;
     res.redirect(logoutUrl);
 });
 
