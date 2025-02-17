@@ -6,35 +6,39 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-
+const BASE_URL = 'https://sixtyworlds.com';
 const clock = new THREE.Clock();
-const scene = new THREE.Scene();
+export const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x88ccee);
 scene.fog = new THREE.Fog(0x88ccee, 0, 50);
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+export const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = 'YXZ';
-const fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
+let fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
 fillLight1.position.set(2, 1, 1);
 scene.add(fillLight1);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-directionalLight.position.set(- 5, 25, - 1);
-directionalLight.castShadow = true;
-directionalLight.shadow.camera.near = 0.01;
-directionalLight.shadow.camera.far = 500;
-directionalLight.shadow.camera.right = 30;
-directionalLight.shadow.camera.left = - 30;
-directionalLight.shadow.camera.top = 30;
-directionalLight.shadow.camera.bottom = - 30;
-directionalLight.shadow.mapSize.width = 1024;
-directionalLight.shadow.mapSize.height = 1024;
-directionalLight.shadow.radius = 4;
-directionalLight.shadow.bias = - 0.00006;
-scene.add(directionalLight);
+const LIGHT_SETTINGS = {
+    HIGH: {
+        skyColor: 0xffffff,
+        groundColor: 0x8dc1de,
+        intensity: 2.5
+    },
+    STANDARD: {
+        skyColor: 0x8dc1de,
+        groundColor: 0x00668d,
+        intensity: 1.5
+    },
+    DARK: {
+        skyColor: 0x444444,
+        groundColor: 0x000000,
+        intensity: 0.5
+    }
+};
+
 
 const container = document.getElementById('container');
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setAnimationLoop(animate);
@@ -48,7 +52,8 @@ stats.domElement.style.position = 'absolute';
 stats.domElement.style.top = '0px';
 container.appendChild(stats.domElement);
 
-const GRAVITY = 30; 
+const STANDARD_GRAVITY = 30; 
+let currentGravity = STANDARD_GRAVITY;
 const STEPS_PER_FRAME = 5;
 const worldOctree = new Octree();
 const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
@@ -134,7 +139,7 @@ function updatePlayer(deltaTime) {
 
 	if (!playerOnFloor) {
 
-		playerVelocity.y -= GRAVITY * deltaTime;
+		playerVelocity.y -= currentGravity * deltaTime;
 
 		// small air resistance
 		damping *= 0.1;
@@ -311,7 +316,7 @@ function sendDataToServer() {
 
 	console.log('Sending CSV data to server:', csvData);  // Add logging to verify this
 
-	fetch('http://localhost:3000/save-camera-data', {
+	fetch('http://${BASE_URL}/save-camera-data', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'text/csv',  // Ensure the correct content type
@@ -334,7 +339,7 @@ function sendDataToServer() {
 // });
 
 async function fetchAndRenderCSVData() {
-	const response = await fetch('http://localhost:3000/get-csv-data');
+	const response = await fetch('http://${BASE_URL}/get-csv-data');
 	const data = await response.json();  // Receive the parsed CSV data as JSON
 	console.log(data);
 
@@ -537,4 +542,40 @@ function updateLoadingGear(progression) {
 		const displayProgress = Math.min(Math.max(progression, 0), 100);
 		progressText.innerText = `${displayProgress}%`;
 	}
+}
+
+let currentMoveMode = 'fly'
+export function toggleMoveMode(){
+	if(currentMoveMode == 'fly'){
+		currentMoveMode = 'walk'
+		currentGravity = STANDARD_GRAVITY
+
+	}else{
+		currentMoveMode = 'fly'
+		currentGravity = 0;
+	}
+	return currentMoveMode
+}
+
+let currentLightMode = 'STANDARD';
+
+export function toggleLighting() {
+    switch(currentLightMode) {
+        case 'STANDARD':
+            currentLightMode = 'HIGH';
+            break;
+        case 'HIGH':
+            currentLightMode = 'DARK';
+            break;
+        case 'DARK':
+            currentLightMode = 'STANDARD';
+            break;
+    }
+    
+    const settings = LIGHT_SETTINGS[currentLightMode];
+    fillLight1.skyColor.setHex(settings.skyColor);
+    fillLight1.groundColor.setHex(settings.groundColor);
+    fillLight1.intensity = settings.intensity;
+    
+    return currentLightMode;
 }

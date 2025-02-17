@@ -1,6 +1,6 @@
 let currentIndex = 0;
 const itemsPerPage = 9;
-
+const BASE_URL = 'https://sixtyworlds.com';
 /*
    #####
   ##   ##
@@ -231,7 +231,25 @@ export function openUploadWindow() {
 			// Transfer the file data via postMessage
 			editorWindow.onload = () => {
 				editorWindow.postMessage({ fileName, blob }, window.location.origin);
+
+
+				console.log("sending:", fileName)
+
+
+
+
+				setTimeout(() => {
+					console.log("Sending delayed message...");
+					editorWindow.postMessage({ fileName, blob }, "${BASE_URL}");//change to the server address
+				}, 500);
+
 			};
+			window.addEventListener("message", (event) => {
+				if (event.data.type === "requestData") {
+					console.log("Sending data after request:", fileName);
+					editorWindow.postMessage({ fileName, blob }, window.location.origin);
+				}
+			});
 		};
 
 		// Read the file as ArrayBuffer to support both .glb and .gltf
@@ -251,7 +269,7 @@ function uploadFileToS3(file, serial) {
 
 export async function finalUpload(model_Object) {
 	try {
-		const response = await fetch('http://localhost:3000/upload-model', {
+		const response = await fetch('http://${BASE_URL}/upload-model', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -351,181 +369,8 @@ UI, updating the interface...
 */
 
 
-// Function to show the loading gear
-export function showLoadingGear() {
-	const gear = document.createElement('div');
-	gear.id = 'loadingGear';
-	gear.style.width = '50px';
-	gear.style.height = '50px';
-	gear.style.border = '5px solid #ccc';
-	gear.style.borderTop = '5px solid #333';
-	gear.style.borderRadius = '50%';
-	gear.style.animation = 'spin 1s linear infinite';
-	gear.style.position = 'fixed';
-	gear.style.top = '50%';
-	gear.style.left = '50%';
-	gear.style.transform = 'translate(-50%, -50%)';
-
-	// Progress Text
-	const progressText = document.createElement('div');
-	progressText.id = 'loadingProgress';
-	progressText.style.position = 'absolute';
-	progressText.style.top = '60px';
-	progressText.style.left = '50%';
-	progressText.style.transform = 'translateX(-50%)';
-	progressText.style.color = '#333';
-	progressText.style.fontSize = '14px';
-	progressText.style.fontWeight = 'bold';
-	progressText.innerText = '0%';
-
-	// Append gear and progress text
-	document.body.appendChild(gear);
-	document.body.appendChild(progressText);
-}
-
-// Function to hide the rotating gear
-export function hideLoadingGear() {
-	console.log("Trying to hide loading gear")
-	const gear = document.getElementById('loadingGear');
-	const progressText = document.getElementById('loadingProgress');
-	if (gear) document.body.removeChild(gear);
-	if (progressText) document.body.removeChild(progressText);
-}
-
-// Function to update the loading progression
-export function updateLoadingGear(progression) {
-	const progressText = document.getElementById('loadingProgress');
-	if (progressText) {
-		// Ensure progression is between 0 and 100
-		const displayProgress = Math.min(Math.max(progression, 0), 100);
-		progressText.innerText = `${displayProgress}%`;
-	}
-}
-// CSS animation for the rotating gear
-const style = document.createElement('style');
-style.textContent = `
-	@keyframes spin {
-	  0% { transform: rotate(0deg); }
-	  100% { transform: rotate(360deg); }
-	}
-  `;
-document.head.appendChild(style);
 
 
-
-export function createConfigUI(model_Object, editMode = false) {
-	/*
-	This is a temporaty Winter Show adaptation
-	*/
-
-	// Parse keywords string into an array
-	let keywordsArray = [];
-	if (!editMode) {
-		try {
-			keywordsArray = JSON.parse(model_Object.keywords.replace(/'/g, '"'));
-		} catch (error) {
-			console.error("Failed to parse keywords:", error);
-			keywordsArray = ["Invalid format"];
-		}
-	}
-	const keywordsString = keywordsArray.join(", ");
-
-	const configUI = document.createElement("div");
-	configUI.className = "floating-ui config-ui";
-	if (editMode) {
-
-		configUI.innerHTML = `
-			<h3>Edit Model Details</h3>
-
-			<div class="form-group">
-				<label for="model-name"><strong>Model Name:</strong></label>
-				<input type="text" id="model-name" placeholder="${model_Object.model_name}" class="input-field" />
-			</div>
-
-			<div class="form-group">
-				<label for="author-name"><strong>Author:</strong></label>
-				<input type="text" id="author-name" placeholder="${model_Object.author_name}" class="input-field" />
-			</div>
-
-			<div class="form-group">
-				<label for="upload-date"><strong>Upload Date:</strong></label>
-				<input type="date" id="upload-date" value="${model_Object.upload_date}" class="input-field" />
-			</div>
-
-			<div class="form-group">
-				<label for="keywords"><strong>Keywords:</strong></label>
-				<input type="text" id="keywords" placeholder="Enter keywords" class="input-field" />
-			</div>
-
-			<div class="button-group">
-				<!-- Buttons for Edit Mode -->
-				<button class="main-button" id="save-changes">Save Changes</button>
-				<button class="main-button" id="upload">Upload</button>
-				<button class="config-button" id="fly-walk">Fly/Walk</button>
-				<button class="config-button" id="day-night">Day/Night</button>
-				<button class="cancel-button" id="cancel">Cancel</button>
-			</div>
-		`;
-	} else {
-		configUI.innerHTML = `
-            <h3>${model_Object.model_name || "Untitled"}</h3>
-            <p><strong>Author:</strong> ${model_Object.author_name || "Anonymous"}</p>
-            <p><strong>Upload Date:</strong> ${model_Object.upload_date || "yyyy.mm.dd"}</p>
-            <p><strong>Keywords:</strong> ${keywordsString}</p>
-            <p><strong>Likes:</strong> ${model_Object.likes || 0}</p>
-
-            <div class="button-group">
-                <button class="config-button" id="fly-walk">Fly/Walk</button>
-                <button class="config-button" id="day-night">Day/Night</button>
-                <button class="cancel-button" id="back">Back</button>
-            </div>
-		`;
-	}
-
-	const container = document.getElementById("container");
-	container.appendChild(configUI);
-
-	// document.getElementById("starting-point").addEventListener("click", () => {
-	// 	setAsStartingPoint()
-	// });
-
-	// document.getElementById("change-mode").addEventListener("click", () => {
-	// 	console.log("Fly Mode clicked");
-	// 	// Add logic for toggling fly mode text
-	// });
-
-	// document.getElementById("upload-world").addEventListener("click", () => {
-	// 	const modelName = document.getElementById("model_name").value;
-	// 	console.log(`Uploading: ${modelName}`);
-	// 	alert("This is still under construction! Feel free to contact jy4421@nyu.edu");
-
-	// });
-}
-
-
-export function createCommentUI() {
-	// Create the comment UI element
-	const commentUI = document.createElement("div");
-	commentUI.className = "floating-ui comment-ui";
-	commentUI.innerHTML = `
-	  <h4>Comments</h4>
-	  <div class="comments">
-		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Thank you for visiting my website!</span>
-		</div>
-		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">It is still under construction!</span>
-		</div>
-		<div class="comment-input">
-		  <input type="text" placeholder="Commenting will be soon available" class="comment-box" />
-		  <button class="minor-btn">Send</button>
-		</div>
-	  </div>
-	`;
-
-	const container = document.getElementById("container");
-	container.appendChild(commentUI);
-}
 
 export function updateMyWorldsButton(isAuthenticated, userInfo) {
 	const myWorldsButton = document.getElementById('myWorldsButton');

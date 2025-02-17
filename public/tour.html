@@ -2,7 +2,7 @@
 <html>
 
 <head>
-	<title>Sixty Worlds - Winter Show Prototype!</title>
+	<title>Sixty Worlds - Prototype 1.2</title>
 	<link rel="stylesheet" href="/style.css">
 	<script type="importmap">
 		{
@@ -36,8 +36,10 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud, createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear } from './script.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear } from './ui.js';
+		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
+		import { uploadWorld } from './upload.js';
 		let { isAuthenticated, userInfo } = await fetchUserState()
 		const serial = getQueryParams_Serial();
 		// let blobUrl, modelName;
@@ -85,7 +87,7 @@
 		// Step 0: Declare global variables
 		let blobUrl = ''; // Empty by default
 		let modelName = ''; // Empty by default
-		let messageReceived = false
+		let modelIsLoaded = false;
 
 		// Step 1: Safe trigger point for page loading
 		function initializePage() {
@@ -94,8 +96,6 @@
 			// Case 1: Check if blobUrl and modelName are already set
 			if (blobUrl && modelName) {
 				console.log('Data already loaded. Using existing variables: ', blobUrl);
-				// preModelLoading();
-				// hideLoadingGear();
 				return;
 			}
 
@@ -115,9 +115,7 @@
 
 				console.log('Blob URL recreated:', blobUrl);
 
-				// Load the model and hide the loading gear
-				// preModelLoading();
-				// hideLoadingGear();
+
 				return;
 			}
 
@@ -125,6 +123,7 @@
 			console.log('[Local] Waiting for message event to receive data.\n[Online] No blobUrl or fileName detected. Waiting for loading with serial');
 		}
 
+		let messageReceived = false
 		// Step 2: Message event listener
 		window.addEventListener('message', (event) => {
 			messageReceived = true
@@ -165,7 +164,6 @@
 
 					// Load the model and hide the loading gear
 					preModelLoading();
-					hideLoadingGear();
 				};
 				reader.readAsDataURL(blob); // Convert Blob to Base64
 			} else {
@@ -174,11 +172,15 @@
 		});
 
 		// Step 3: Trigger page initialization
-		// initializePage();
 		if (!messageReceived) {
 			initializePage();
 			preModelLoading();
 		}
+
+		window.addEventListener("load", () => {
+			console.log("tour.html is fully loaded, requesting data...");
+			window.opener.postMessage({ type: "requestData" }, "*");
+		});
 
 
 		/*
@@ -202,7 +204,7 @@
 
 		function preModelLoading() {
 			if (serial === 'missingSerial' || serial === undefined) {//load local
-				console.log("Loading local model, serial:", serial)
+				console.log("Loading LOCAL model, serial:", serial)
 				if (blobUrl) {
 					const currentDate = new Date();
 					modelObject = {
@@ -216,8 +218,8 @@
 					loadModel(modelObject, () => {
 						console.log("Local model loaded successfully!");
 						hideLoadingGear();
-						createConfigUI(modelObject, true)
 					})
+					createConfigUI(modelObject, true, authorUID, blobUrl)
 
 				} else {
 					// Wait for 3 seconds before showing the alert if `messageReceived` is true
@@ -227,7 +229,6 @@
 						}
 					}, 3000); // 3000ms = 3 seconds
 				}
-
 			} else {//load cloud,
 				console.log("Loading online model,serial:", serial)
 				getModelData_Cloud(serial).then(data => {
@@ -252,16 +253,19 @@
 
 							if (imTheAuthur) {
 								console.log("[Validated] The user is the authur")
-								createConfigUI(modelObject, true)
+								createConfigUI(modelObject, false, authorUID, blobUrl)
 							} else {
 								console.log("[Validated] The user is Not the authur")
-								createConfigUI(modelObject, false)
+								createConfigUI(modelObject, false, authorUID)
 							}
 							createCommentUI()
 						})
 					}
 				});
+
 			}
+
+			modelIsLoaded = true;
 		}
 
 
@@ -311,104 +315,6 @@
 		Generate preview, upload file and photo;
 		If interrupted, send a "disable" 
 		*/
-		async function upload(config) {
-			/*
-			When uploading, there should be a preview, a configuration and the file.
-			[1]The config is an object consisting of:
-				{
-				serial: (empty now, done in server later),
-				model_name: (in configUI),
-				author_uid: (=authorUID),
-				upload_date: (empty now, done in server later),
-				starting_set: (in configUI),
-				keywords: (in configUI),
-				likes:0,
-				}
-
-			[2]The preview is a picture:
-				1. screenshot of the three.js render;
-				2. cropped into 3:4;
-				3. named as serial;
-				4. format as jpeg;
-				5. (later)uploaded into aws s3 bucket;
-
-			[3]The file is the file in the blobUrl:
-				1. renamed as serial;
-				2. keep the format of original;
-				3. (later)uploaded into aws s3 bucket;
-			*/
-
-			// Step 1: Generate presigned URLs and serial from the server
-			const { paURL_preview, paURL_model, serial } = await writeToServer(config);
-
-			// Step 2: Process and rename the preview
-			const previewBlob = await createPreviewBlob();
-			const renamedPreviewBlob = new File([previewBlob], `${serial}.jpeg`, {
-				type: 'image/jpeg',
-			});
-
-			// Step 3: Upload the preview to AWS
-			await uploadToAWS(paURL_preview, renamedPreviewBlob);
-
-			// Step 4: Process and rename the file
-			const fileBlob = await fetch(blobUrl).then((res) => res.blob());
-			const renamedFileBlob = new File([fileBlob], `${serial}.${getFileExtension(modelName)}`, {
-				type: fileBlob.type,
-			});
-
-			// Step 5: Upload the file to AWS
-			await uploadToAWS(paURL_model, renamedFileBlob);
-
-			console.log('Upload completed successfully.');
-
-
-
-		}
-		async function writeToServer(config) {
-			/*
-			This frontend function is going to:
-			 1. send the config object to server 
-			 2. get the 2 preAssignedURLs from server to upload the preview and the file;	
-			*/
-			const response = await fetch('/api/getPresignedURLs', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(config),
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to get presigned URLs');
-			}
-
-			return await response.json(); // { paURL_preview, paURL_model, serial }
-
-		}
-
-		function createPreviewBlob() {
-			// Capture the current Three.js render as a canvas
-			const canvas = document.querySelector('canvas');
-			return new Promise((resolve) => {
-				canvas.toBlob((blob) => {
-					resolve(blob);
-				}, 'image/jpeg', 0.8); // JPEG format, 80% quality
-			});
-		}
-
-		async function uploadToAWS(url, blob) {
-			const response = await fetch(url, {
-				method: 'PUT',
-				body: blob,
-			});
-
-			if (!response.ok) {
-				throw new Error(`Failed to upload to AWS: ${response.statusText}`);
-			}
-		}
-
-		function getFileExtension(fileName) {
-			return fileName.slice(fileName.lastIndexOf('.') + 1);
-		}
-
 		function respondToClient(config) {
 			/*
 			This backend function is going to:
@@ -421,28 +327,7 @@
 
 		}
 
-		function fetchConfigFromUI() {
-			// Get the values from the config UI fields
-			const modelName = document.getElementById("model-name").value || "Untitled";
-			const authorName = document.getElementById("author-name").value || "Anonymous";
-			const uploadDate = document.getElementById("upload-date").value || null; // Optional
-			const keywords = document.getElementById("keywords").value.split(",").map((k) => k.trim());
-			const likes = parseInt(document.getElementById("likes").value, 10) || 0;
 
-			// Construct the configuration object
-			const config = {
-				serial: null, // Will be populated by the server
-				model_name: modelName,
-				author_uid: authorUID, // Assuming `authorUID` is available globally
-				upload_date: null, // Will be populated by the server
-				starting_set: {}, // If additional settings are needed, fetch here
-				keywords,
-				likes,
-			};
-
-			console.log("Fetched config:", config);
-			return config;
-		}
 	</script>
 </head>
 

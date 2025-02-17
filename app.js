@@ -1,3 +1,4 @@
+const BASE_URL = 'https://sixtyworlds.com';
 const express = require('express');
 const session = require('express-session');
 const { Issuer, generators } = require('openid-client');
@@ -28,7 +29,7 @@ const s3 = new S3Client({
 // console.log(process.env.AWS_SECRET_ACCESS_KEY)
 const csvFilePath_Worlds = 'worlds.csv'
 const csvFilePath_Authors = 'authors.csv'
-const destination_login = 'http://localhost:3000/callback'
+const destination_login = 'http://${BASE_URL}/callback'
 const previewBucket = 'sixtyworlds-previews'
 const modelBucket = 'sixtyworlds-models'
 /*
@@ -217,7 +218,7 @@ app.get('/logout', (req, res) => {
     Seems need to be updated from localhost to sixtyworlds
     */
     req.session.destroy();
-    const logoutUrl = `https://us-east-2arf7gdgij.auth.us-east-2.amazoncognito.com/logout?client_id=igqvrbfgkacjbh81g2a7vfse4&logout_uri=http://localhost:3000`;
+    const logoutUrl = `https://us-east-2arf7gdgij.auth.us-east-2.amazoncognito.com/logout?client_id=igqvrbfgkacjbh81g2a7vfse4&logout_uri=http://${BASE_URL}`;
     res.redirect(logoutUrl);
 });
 
@@ -545,7 +546,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
 
                         const authorName = await getAuthorName(data.author_uid)
                         console.log(data)
-                        data.author_name=authorName
+                        data.author_name = authorName
                         data.model_url = model_url;
                         if (!isResponded) {
                             isResponded = true; // Prevent duplicate responses
@@ -591,7 +592,27 @@ app.get('/api/getModel/:serial', async (req, res) => {
    #####
 AWS S3 - Preasssinged URLs + findFileKey
 */
+async function generateUploadUrl(type, bucket, baseKey) {  // type: 0=>Preview; 1=>Models
+    try {
+        // Determine file extension based on type
+        const extension = type === 0 ? '.jpeg' : '.glb';
+        const key = `${baseKey}${extension}`;
 
+        // Create the command for the upload presigned URL
+        const command = new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            ContentType: type === 0 ? 'image/jpeg' : 'model/gltf-binary'
+        });
+
+        // Generate the presigned URL (5 minutes expiry)
+        const url = await getSignedUrl(s3, command, { expiresIn: 300 });
+        return url;
+    } catch (error) {
+        console.error(`Error generating upload URL for ${bucket}/${baseKey}:`, error);
+        return null;
+    }
+}
 
 async function generatePresignedUrl(type, bucket, baseKey) {//type: 0=>Preview; 1=>Models
     try {
@@ -703,6 +724,83 @@ app.post('/upload-model', async (req, res) => {
   ##
 Comment with a position
 */
+
+async function getNextSerial() {
+    return new Promise((resolve, reject) => {
+        let lineCount = 0;
+        const rl = require('readline').createInterface({
+            input: fs.createReadStream(csvFilePath_Worlds),
+            crlfDelay: Infinity
+        });
+
+        rl.on('line', () => {
+            lineCount++;
+        });
+
+        rl.on('close', () => {
+            // Since lineCount includes header row, it's already the next serial number
+            resolve((lineCount - 1).toString()); // Subtract 1 to account for header
+        });
+
+        rl.on('error', (err) => {
+            reject(err);
+        });
+    });
+}
+
+app.post('/api/uploadWorld', async (req, res) => {
+    const config = req.body;
+    let newSerial;
+
+    try {
+        // 1-1. Check/Update authors.csv
+        const authorsStream = fs.createReadStream(csvFilePath_Authors).pipe(csv());
+        let authorExists = false;
+
+        await new Promise((resolve, reject) => {
+            authorsStream
+                .on('data', (row) => {
+                    if (row.UID === config.author_uid) {
+                        authorExists = true;
+                    }
+                })
+                .on('end', async () => {
+                    if (!authorExists) {
+                        const newAuthorRow = `\n${config.author_name},${config.author_uid}`;
+                        await fs.promises.appendFile(csvFilePath_Authors, newAuthorRow);
+                    }
+                    resolve();
+                })
+                .on('error', reject);
+        });
+
+        // 1-2. Add new entry to worlds.csv
+        // First, get the last serial number
+        newSerial = await getNextSerial();
+        const currentDate = new Date().toISOString().split('T')[0];
+        const newWorldRow = `\n${newSerial},${config.model_name},${config.author_uid},${currentDate},${config.configuration},${config.keywords},${config.likes}`;
+        await fs.promises.appendFile(csvFilePath_Worlds, newWorldRow);
+
+        let previewName = `${config.author_uid}-${newSerial}`;
+        // 2. Generate presigned URL for preview upload
+        const paURL_preview = await generateUploadUrl(0, previewBucket, previewName);
+
+        // 3. Generate presigned URL for model upload
+        const paURL_model = await generateUploadUrl(1, modelBucket, newSerial);
+
+
+        // 4. Send response
+        res.json({
+            paURL_preview,
+            paURL_model,
+            serial: newSerial
+        });
+
+    } catch (error) {
+        console.error('Error in /api/uploadWorld:', error);
+        res.status(500).json({ error: 'Failed to process upload request' });
+    }
+});
 
 /*
    #####
