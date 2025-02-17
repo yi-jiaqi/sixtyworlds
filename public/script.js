@@ -32,7 +32,7 @@ export function loadPreviews(observer, sort = 'time', word = '') {
 			const container = document.getElementById('model-container');
 
 			models.forEach(model => {
-				// console.log("a model is loaded")
+				console.log("a model is loaded:",model)
 				if (model.isEnd) {
 					// Display the "End of the Worlds" message if isEnd is encountered
 					console.log("End of the Worlds!");
@@ -269,7 +269,7 @@ function uploadFileToS3(file, serial) {
 
 export async function finalUpload(model_Object) {
 	try {
-		const response = await fetch(`${BASE_URL}/upload-model`, {
+		const response = await fetch(`/upload-model`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
