@@ -1,6 +1,7 @@
 let currentIndex = 0;
 const itemsPerPage = 9;
 const BASE_URL = 'https://sixtyworlds.com';
+import { showLoadingGear, hideLoadingGear } from './ui.js';
 /*
    #####
   ##   ##
@@ -152,7 +153,7 @@ Author, Updates...
 
 tour!
 Download the model  --> from server
-Load the model, load the rigidbody.   --> from load.js
+Load the model, load the rigidbody.  
 Configure the starting point and direction
 */
 
@@ -322,16 +323,26 @@ export async function fetchUserState() {
 
 
 export async function getAuthorInfoBySerial(serial) {
-	//This is the first function, in order to validate the user is the author.
-	const response = await fetch(`/api/getAuthorUID/${serial}`);
-	console.log(response)
-	if (response.ok) {
-		const data = await response.json();
-		// console.log(data.author_uid)
-		return data;
-	} else {
-		throw new Error('Author not found');
-	}
+    try {
+        const response = await fetch(`/api/getAuthorUID/${serial}`);
+        console.log(response);
+        if (response.ok) {
+            const data = await response.json();
+            return data;
+        } else {
+            console.log(`Author not found for serial ${serial}, using temp author`);
+            return {
+                author_uid: 'temp',
+                author_name: 'temp'
+            };
+        }
+    } catch (error) {
+        console.warn(`Error fetching author info: ${error.message}`);
+        return {
+            author_uid: 'temp',
+            author_name: 'temp'
+        };
+    }
 }
 
 /*

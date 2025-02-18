@@ -18,25 +18,38 @@ fillLight1.position.set(2, 1, 1);
 scene.add(fillLight1);
 
 const LIGHT_SETTINGS = {
-    HIGH: {
-        skyColor: 0xffffff,
-        groundColor: 0x8dc1de,
-        intensity: 2.5
-    },
-    STANDARD: {
-        skyColor: 0x8dc1de,
-        groundColor: 0x00668d,
-        intensity: 1.5
-    },
-    DARK: {
-        skyColor: 0x444444,
-        groundColor: 0x000000,
-        intensity: 0.5
-    }
+	HIGH: {
+		skyColor: 0xffffff,
+		groundColor: 0x8dc1de,
+		intensity: 2.5
+	},
+	NORMAL: {
+		skyColor: 0x8dc1de,
+		groundColor: 0x00668d,
+		intensity: 1.5
+	},
+	DARK: {
+		skyColor: 0x444444,
+		groundColor: 0x000000,
+		intensity: 0.5
+	}
 };
 
 
-const container = document.getElementById('container');
+const STANDARD_GRAVITY = 30;
+let currentGravity = STANDARD_GRAVITY;
+const STEPS_PER_FRAME = 5;
+
+function initializeContainer() {
+	const container = document.getElementById('container');
+	if (!container) {
+		console.warn('Container not found, likely not in tour.html');
+		return null;
+	}
+	return container;
+}
+
+
 
 export const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -45,16 +58,32 @@ renderer.setAnimationLoop(animate);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-container.appendChild(renderer.domElement);
+
+// Use the function where needed
+let container = initializeContainer();
+
+function addToContainer() {
+	if (container) {
+		// Only execute Three.js setup if container exists
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.setAnimationLoop(animate);
+		container.appendChild(renderer.domElement);
+
+		// Stats setup only if container exists
+		const stats = new Stats();
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.top = '0px';
+		container.appendChild(stats.domElement);
+	}
+}
+
+addToContainer();
 
 const stats = new Stats();
 stats.domElement.style.position = 'absolute';
 stats.domElement.style.top = '0px';
-container.appendChild(stats.domElement);
 
-const STANDARD_GRAVITY = 30; 
-let currentGravity = STANDARD_GRAVITY;
-const STEPS_PER_FRAME = 5;
 const worldOctree = new Octree();
 const playerCollider = new Capsule(new THREE.Vector3(0, 0.35, 0), new THREE.Vector3(0, 1, 0), 0.35);
 const playerVelocity = new THREE.Vector3();
@@ -77,7 +106,7 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('keyup', (event) => {
 	keyStates[event.code] = false;
 });
-container.addEventListener('mousedown', () => {
+container?.addEventListener('mousedown', () => {
 
 	document.body.requestPointerLock();
 
@@ -430,6 +459,8 @@ function renderLines(lineArray, group) {
 export function loadModel(modelObject, onComplete) {
 	console.log("Loading is now started");
 	showLoadingGear();
+	container = initializeContainer();
+	addToContainer();
 	let path = modelObject.model_url;
 
 	loader.load(
@@ -490,7 +521,7 @@ export function loadModel(modelObject, onComplete) {
 
 // fetchAndRenderCSVData();
 
-export function testA(){
+export function testA() {
 	console.log("testA")
 }
 
@@ -545,37 +576,37 @@ function updateLoadingGear(progression) {
 }
 
 let currentMoveMode = 'fly'
-export function toggleMoveMode(){
-	if(currentMoveMode == 'fly'){
+export function toggleMoveMode() {
+	if (currentMoveMode == 'fly') {
 		currentMoveMode = 'walk'
 		currentGravity = STANDARD_GRAVITY
 
-	}else{
+	} else {
 		currentMoveMode = 'fly'
-		currentGravity = 0;
+		currentGravity = STANDARD_GRAVITY/6;
 	}
 	return currentMoveMode
 }
 
-let currentLightMode = 'STANDARD';
+let currentLightMode = 'NORMAL';
 
 export function toggleLighting() {
-    switch(currentLightMode) {
-        case 'STANDARD':
-            currentLightMode = 'HIGH';
-            break;
-        case 'HIGH':
-            currentLightMode = 'DARK';
-            break;
-        case 'DARK':
-            currentLightMode = 'STANDARD';
-            break;
-    }
-    
-    const settings = LIGHT_SETTINGS[currentLightMode];
-    fillLight1.skyColor.setHex(settings.skyColor);
-    fillLight1.groundColor.setHex(settings.groundColor);
-    fillLight1.intensity = settings.intensity;
-    
-    return currentLightMode;
+	switch (currentLightMode) {
+		case 'NORMAL':
+			currentLightMode = 'HIGH';
+			break;
+		case 'HIGH':
+			currentLightMode = 'DARK';
+			break;
+		case 'DARK':
+			currentLightMode = 'NORMAL';
+			break;
+	}
+
+	const settings = LIGHT_SETTINGS[currentLightMode];
+	fillLight1.skyColor.setHex(settings.skyColor);
+	fillLight1.groundColor.setHex(settings.groundColor);
+	fillLight1.intensity = settings.intensity;
+
+	return currentLightMode;
 }

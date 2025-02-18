@@ -1,4 +1,4 @@
-import { toggleMoveMode, toggleLighting } from './load.js';
+import { toggleMoveMode, toggleLighting,getCurrentPosRot } from './load.js';
 import { uploadWorld } from './upload.js';
 
 // Add at the top of the file, outside any function
@@ -217,6 +217,26 @@ export function createConfigUI(model_Object, editMode = false,author_UID="",blob
 }
 
 
+
+
+export function updateMyWorldsButton(isAuthenticated, userInfo) {
+	const myWorldsButton = document.getElementById('myWorldsButton');
+
+	if (isAuthenticated) {
+		myWorldsButton.textContent = userInfo.nickname || 'My Worlds';
+		myWorldsButton.href = '/profile';
+	} else {
+		myWorldsButton.textContent = 'Sign In / Sign Up';
+		myWorldsButton.href = '/login';
+	}
+}
+
+export const dynamicMargin = () => {
+	const viewportHeight = window.innerHeight;
+	return viewportHeight / -5 // Adjust for smaller screens
+};
+
+
 export function createCommentUI() {
 	// Create the comment UI element
 	const commentUI = document.createElement("div");
@@ -241,19 +261,8 @@ export function createCommentUI() {
 	container.appendChild(commentUI);
 }
 
-export function updateMyWorldsButton(isAuthenticated, userInfo) {
-	const myWorldsButton = document.getElementById('myWorldsButton');
-
-	if (isAuthenticated) {
-		myWorldsButton.textContent = userInfo.nickname || 'My Worlds';
-		myWorldsButton.href = '/profile';
-	} else {
-		myWorldsButton.textContent = 'Sign In / Sign Up';
-		myWorldsButton.href = '/login';
-	}
+function commentWrapper() {
+	const currentPosRot = getCurrentPosRot();
+	const comment = getElementById('comment');
+	let commentText = comment.value;
 }
-
-export const dynamicMargin = () => {
-	const viewportHeight = window.innerHeight;
-	return viewportHeight / -5 // Adjust for smaller screens
-};
