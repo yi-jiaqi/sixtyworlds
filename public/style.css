@@ -260,26 +260,32 @@ footer {
 /* Basic styling for the floating UI */
 .floating-ui {
   position: fixed;
-  bottom: 0;
-  padding: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  background-color: rgba(248, 249, 250, 0.95);
   border: 1px solid #ddd;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
   z-index: 1000;
-  border-radius: 5px;
+  border-radius: 8px;
 }
 
 /* Config UI specific styling */
 .config-ui {
-  left: 0;
-  width: 20vw; /* 1/8 of the viewport */
+  width: 18vw;
+  transition: left 0.3s ease-out;
+}
+
+.comments{
+  gap:12px;
 }
 
 /* Comment UI specific styling */
 .comment-ui {
   right: 0;
-  width: 20vw; /* 1/6 of the viewport */
+  width: 24vw; /* 1/6 of the viewport */
+}
+.shortcuts-ui {
+  right: 0;
+  width: 12vw; /* 1/6 of the viewport */
 }
 
 /* Additional styles for elements */
@@ -347,6 +353,9 @@ footer {
   .comment-ui {
     display: none;
   }
+  .shortcuts-ui {
+    display: none;
+  }
 }
 
 
@@ -378,31 +387,49 @@ input {
 .config-ui {
   display: flex;
   flex-direction: column;
-  gap: 16px; /* Add spacing between elements */
-  background-color: #f8f9fa;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-width: 400px; /* Limit the width */
-  margin: 0 auto; /* Center the UI horizontally */
+  gap: 8px; /* Add spacing between elements */
 }
 
 /* Form Group Layout */
 .form-group {
   display: flex;
-  flex-direction: column;
-  gap: 8px; /* Space between label and input */
+  flex-direction: row; /* Change to row */
+  justify-content: space-between; /* Add space between */
+  align-items: center; /* Center items vertically */
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-label {
+.form-group label {
   font-weight: bold;
+  color: #666;
+  flex: 0 0 auto; /* Prevent label from growing */
 }
 
-.input-field {
+.form-group .input-field {
+  width: 60%; /* Give input a fixed proportion */
   padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 14px;
+}
+
+/* Config Details Layout */
+.config-details p {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  margin: 0; /* Remove default paragraph margin */
+}
+
+.config-details strong {
+  color: #666;
+}
+
+.config-value {
+  color: #333;
+  text-align: right;
 }
 
 /* Button Group Layout */
@@ -450,4 +477,39 @@ button {
 
 .cancel-button:hover {
   background-color: #c82333;
+}
+
+
+.shortcuts-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.shortcut-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shortcut-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.shortcut-icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.shortcut-key {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 15px;
+  min-width: 15px;
+  text-align: center;
 }

@@ -36,7 +36,7 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear } from './ui.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear,createShortcutsUI,checkUIExistence } from './ui.js';
 		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
 		import { uploadWorld } from './upload.js';
@@ -221,6 +221,7 @@
 					})
 					createConfigUI(modelObject, true, authorUID, blobUrl)
 
+
 				} else {
 					// Wait for 3 seconds before showing the alert if `messageReceived` is true
 					setTimeout(() => {
@@ -235,7 +236,6 @@
 					if (data) {
 						modelObject = data
 						console.log(data)
-						// Handle the parsed data object
 						// showLoadingGear();
 						loadModel(data, () => {
 							console.log("Online model loaded successfully!");
@@ -259,11 +259,14 @@
 								createConfigUI(modelObject, false, authorUID)
 							}
 							createCommentUI()
+							createShortcutsUI()
+							checkUIExistence()
 						})
 					}
 				});
 
 			}
+
 
 			modelIsLoaded = true;
 		}
@@ -329,16 +332,115 @@
 
 
 	</script>
+	<style>
+        .notification-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+            z-index: 1001;
+        }
+
+        .pointer-hint {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s ease;
+            transform: translateX(100%);
+        }
+
+        .pointer-hint.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    </style>
 </head>
 
 <body>
-
-
-	<div id="container"></div>
-
+    <div class="notification-container">
+        <div id="pointer-hint" class="pointer-hint">Click anywhere to start</div>
+    </div>
+    <div id="container"></div>
 	<div id="viewer-container"></div>
 	<div id="config-window" class="popup hidden"></div>
 	<div id="feedback-window" class="popup hidden"></div>
+	<script type="module">
+        // Add this to your existing script
+        document.addEventListener('DOMContentLoaded', () => {
+            const hint = document.getElementById('pointer-hint');
+            hint.classList.add('visible');
+            
+            // Hide the hint when pointer is locked
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement) {
+                    hint.classList.remove('visible');
+                }
+            });
+
+            // Don't show hint immediately, wait for hideLoadingGear
+            document.addEventListener('mousedown', () => {
+                if (!document.pointerLockElement) {
+                    hint.textContent = 'Press ESC to show cursor';
+                }
+            });
+
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement) {
+                    hint.classList.remove('visible');
+                } else {
+                    hint.textContent = 'Click anywhere to start';
+                    hint.classList.add('visible');
+                }
+            });
+        });
+    </script>
+	<script type="module">
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.querySelector('.notification-container');
+        let messageCount = 0;
+
+        function showMessage(text) {
+            const hint = document.createElement('div');
+            hint.className = 'pointer-hint';
+            hint.textContent = text;
+            container.appendChild(hint);
+
+            // Show message
+            setTimeout(() => hint.classList.add('visible'), 10);
+
+            // Remove message after 3 seconds
+            setTimeout(() => {
+                hint.classList.remove('visible');
+                setTimeout(() => hint.remove(), 300); // Wait for fade out animation
+            }, 3000);
+        }
+
+        // Show initial message
+        showMessage('Click anywhere to start');
+
+        // Update messages based on pointer lock
+        document.addEventListener('mousedown', () => {
+            if (!document.pointerLockElement) {
+                showMessage('Press ESC to show cursor');
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            if (document.pointerLockElement) {
+                // Don't show any message when entering pointer lock
+            } else {
+                showMessage('Click anywhere to start');
+            }
+        });
+    });
+</script>
 </body>
 
 </html>

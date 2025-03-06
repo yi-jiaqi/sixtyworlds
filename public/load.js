@@ -113,11 +113,7 @@ container?.addEventListener('mousedown', () => {
 	mouseTime = performance.now();
 
 });
-document.addEventListener('mouseup', () => {
 
-	// if (document.pointerLockElement !== null) throwBall();
-
-});
 document.body.addEventListener('mousemove', (event) => {
 
 	if (document.pointerLockElement === document.body) {
@@ -601,6 +597,7 @@ export function toggleLighting() {
 		case 'DARK':
 			currentLightMode = 'NORMAL';
 			break;
+
 	}
 
 	const settings = LIGHT_SETTINGS[currentLightMode];
@@ -609,4 +606,22 @@ export function toggleLighting() {
 	fillLight1.intensity = settings.intensity;
 
 	return currentLightMode;
+}
+
+
+export function getCurrentPosRot() {
+    // Get position (x, y, z)
+    const pos = camera.position;
+    // Get rotation (x, y, z) in radians
+    const rot = camera.rotation;
+    
+    // Return array of 6 values: [posX, posY, posZ, rotX, rotY, rotZ]
+    return [
+        Number(pos.x.toFixed(3)),
+        Number(pos.y.toFixed(3)),
+        Number(pos.z.toFixed(3)),
+        Number(rot.x.toFixed(3)),
+        Number(rot.y.toFixed(3)),
+        Number(rot.z.toFixed(3))
+    ];
 }
