@@ -270,7 +270,7 @@ footer {
 
 /* Config UI specific styling */
 .config-ui {
-  width: 18vw;
+  width: 15vw;
   transition: left 0.3s ease-out;
 }
 
@@ -512,4 +512,32 @@ button {
   font-size: 15px;
   min-width: 15px;
   text-align: center;
+}
+
+/* Shortcut key styling */
+.shortcut-key {
+    background-color: rgba(255, 255, 255, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    min-width: 15px;
+    text-align: center;
+    margin: 0;
+    user-select: none;
+    transition: background-color 0.2s ease;
+}
+
+/* Special styling for mouse shortcut */
+.shortcut-key.mouse-key {
+    border-radius: 12px;
+    padding: 4px 10px;
+}
+
+/* Hover effect for clickable shortcuts */
+.shortcut-key.clickable {
+    cursor: pointer;
+}
+
+.shortcut-key.clickable:hover {
+    background-color: rgba(255, 255, 255, 0.3);
 }

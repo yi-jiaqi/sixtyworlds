@@ -110,8 +110,8 @@ export function hideLoadingGear() {
 export function updateLoadingGear(progression) {
     const progressText = document.getElementById('loadingProgress');
     if (progressText) {
-        // Ensure progression is between 0 and 100
-        const displayProgress = Math.min(Math.max(progression, 0), 100);
+        // Ensure progression is between 0 and 100 and round to integer
+        const displayProgress = Math.round(Math.min(Math.max(progression, 0), 100));
         progressText.innerText = `${displayProgress}%`;
     }
 }
@@ -180,8 +180,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
             </div>
             <div class="button-group">
                 <button class="main-button" id="upload">Upload</button>
-                <button class="config-button" id="fly-walk">Walk</button>
-                <button class="config-button" id="day-night">Normal</button>
                 <button class="cancel-button" id="cancel">Cancel</button>
             </div>
         `;
@@ -195,8 +193,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
                 <p><strong>Likes:</strong> <span class="config-value">${model_Object.likes || 0}</span></p>
             </div>
             <div class="button-group">
-                <button class="config-button" id="fly-walk">Walk</button>
-                <button class="config-button" id="day-night">Normal</button>
                 <button class="cancel-button" id="back">Back</button>
             </div>
         `;
@@ -206,28 +202,28 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
     container.appendChild(configUI);
 
     // Add event listeners for the toggle buttons
-    const flyWalkButton = document.getElementById("fly-walk");
-    const dayNightButton = document.getElementById("day-night");
+    // const flyWalkButton = document.getElementById("fly-walk");
+    // const dayNightButton = document.getElementById("day-night");
 
-    flyWalkButton.addEventListener("click", () => {
-        const mode = toggleMoveMode();
-        flyWalkButton.textContent = mode.charAt(0).toUpperCase() + mode.slice(1); // Capitalize first letter
-    });
+    // flyWalkButton.addEventListener("click", () => {
+    //     const mode = toggleMoveMode();
+    //     flyWalkButton.textContent = mode.charAt(0).toUpperCase() + mode.slice(1); // Capitalize first letter
+    // });
 
-    dayNightButton.addEventListener("click", () => {
-        const mode = toggleLighting();
-        switch (mode) {
-            case 'HIGH':
-                dayNightButton.textContent = 'Bright';
-                break;
-            case 'STANDARD':
-                dayNightButton.textContent = 'Normal';
-                break;
-            case 'DARK':
-                dayNightButton.textContent = 'Dark';
-                break;
-        }
-    });
+    // dayNightButton.addEventListener("click", () => {
+    //     const mode = toggleLighting();
+    //     switch (mode) {
+    //         case 'HIGH':
+    //             dayNightButton.textContent = 'Bright';
+    //             break;
+    //         case 'STANDARD':
+    //             dayNightButton.textContent = 'Normal';
+    //             break;
+    //         case 'DARK':
+    //             dayNightButton.textContent = 'Dark';
+    //             break;
+    //     }
+    // });
     let uploaded = false;
     if (editMode) {
         console.log("Edit Mode, adding upload")
@@ -273,8 +269,8 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
     }
 
     // Set initial button text
-    flyWalkButton.textContent = 'Walk'; // Initial state is WALK
-    dayNightButton.textContent = 'Normal'; // Initial state is STANDARD
+    // flyWalkButton.textContent = 'Walk'; // Initial state is WALK
+    // dayNightButton.textContent = 'Normal'; // Initial state is STANDARD
 }
 
 
@@ -316,6 +312,9 @@ export function createCommentUI() {
 		</div>
 		<div class="comment-item">
 		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">It is still under construction!</span>
+		</div>
+        <div class="comment-item">
+		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">The next prototype will be on March 19!</span>
 		</div>
 		<div class="comment-input">
 		  <input type="text" placeholder="Commenting will be soon available" class="comment-box" />
@@ -361,6 +360,15 @@ export function createShortcutsUI() {
                         <path d="M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>
                     </svg>
                     <span>Day/Night Toggle</span>
+                </div>
+                <span class="shortcut-key">N</span>
+            </div>
+                        <div class="shortcut-item">
+                <div class="shortcut-info">
+                    <svg class="shortcut-icon" viewBox="0 0 24 24">
+                        <path d="M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>
+                    </svg>
+                    <span>Save the Scene</span>
                 </div>
                 <span class="shortcut-key">N</span>
             </div>
