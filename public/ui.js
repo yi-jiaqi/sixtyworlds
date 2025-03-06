@@ -201,29 +201,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
     const container = document.getElementById("container");
     container.appendChild(configUI);
 
-    // Add event listeners for the toggle buttons
-    // const flyWalkButton = document.getElementById("fly-walk");
-    // const dayNightButton = document.getElementById("day-night");
-
-    // flyWalkButton.addEventListener("click", () => {
-    //     const mode = toggleMoveMode();
-    //     flyWalkButton.textContent = mode.charAt(0).toUpperCase() + mode.slice(1); // Capitalize first letter
-    // });
-
-    // dayNightButton.addEventListener("click", () => {
-    //     const mode = toggleLighting();
-    //     switch (mode) {
-    //         case 'HIGH':
-    //             dayNightButton.textContent = 'Bright';
-    //             break;
-    //         case 'STANDARD':
-    //             dayNightButton.textContent = 'Normal';
-    //             break;
-    //         case 'DARK':
-    //             dayNightButton.textContent = 'Dark';
-    //             break;
-    //     }
-    // });
     let uploaded = false;
     if (editMode) {
         console.log("Edit Mode, adding upload")
@@ -268,9 +245,7 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
         });
     }
 
-    // Set initial button text
-    // flyWalkButton.textContent = 'Walk'; // Initial state is WALK
-    // dayNightButton.textContent = 'Normal'; // Initial state is STANDARD
+
 }
 
 
@@ -370,7 +345,7 @@ export function createShortcutsUI() {
                     </svg>
                     <span>Save the Scene</span>
                 </div>
-                <span class="shortcut-key">N</span>
+                <span class="shortcut-key">P</span>
             </div>
             <div class="shortcut-item">
                 <div class="shortcut-info">
@@ -390,6 +365,29 @@ export function createShortcutsUI() {
         </div>
     `;
 
+    // const flyWalkButton = document.getElementById("fly-walk");
+    // const dayNightButton = document.getElementById("day-night");
+
+    // flyWalkButton.addEventListener("click", () => {
+    //     const mode = toggleMoveMode();
+    //     flyWalkButton.textContent = mode.charAt(0).toUpperCase() + mode.slice(1); // Capitalize first letter
+    // });
+
+    // dayNightButton.addEventListener("click", () => {
+    //     const mode = toggleLighting();
+    //     switch (mode) {
+    //         case 'HIGH':
+    //             dayNightButton.textContent = 'Bright';
+    //             break;
+    //         case 'STANDARD':
+    //             dayNightButton.textContent = 'Normal';
+    //             break;
+    //         case 'DARK':
+    //             dayNightButton.textContent = 'Dark';
+    //             break;
+    //     }
+    // });
+
     // Get container and append shortcutsUI
     const container = document.getElementById('container');
     container.appendChild(shortcutsUI);
@@ -399,6 +397,9 @@ export function createShortcutsUI() {
         const isLocked = document.pointerLockElement !== null;
         shortcutsUI.classList.toggle('ui-visible', !isLocked);
     });
+    // Set initial button text
+    // flyWalkButton.textContent = 'Walk'; // Initial state is WALK
+    // dayNightButton.textContent = 'Normal'; // Initial state is STANDARD
 
     return shortcutsUI;
 }

@@ -451,7 +451,7 @@ app.get('/api/getAuthorUID/:serial', async (req, res) => {
     console.log("Trying to get author UID by serial: " + serial)
     getItembySerial(serial)
         .then(async (data) => {
-            console.log("Resolved data:", data);
+            console.log("Resolved project:", data.model_name);
 
             const authorName = await getAuthorName(data.author_uid)
             data.author_name = authorName
@@ -542,7 +542,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
 
                     try {
                         const model_url = await generatePresignedUrl(1, modelBucket, modelSerial);
-                        console.log("Successfully generated " + model_url);
+                        // console.log("Successfully generated " + model_url);
 
                         const authorName = await getAuthorName(data.author_uid)
                         console.log(data)
