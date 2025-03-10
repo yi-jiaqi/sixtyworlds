@@ -6,6 +6,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 	<title>Sixty Worlds - Prototype 1.2</title>
 	<link rel="stylesheet" href="/style.css">
+	<script src="/lib/nipple.js"></script>
 	<script type="importmap">
 		{
 		  "imports": {
@@ -38,7 +39,7 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear,createShortcutsUI,checkUIExistence } from './ui.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI,createJoystickUI } from './ui.js';
 		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
 		import { uploadWorld } from './upload.js';
@@ -222,6 +223,8 @@
 						hideLoadingGear();
 					})
 					createConfigUI(modelObject, true, authorUID, blobUrl)
+					createExitUI()
+					createJoystickUI()
 
 
 				} else {
@@ -230,7 +233,7 @@
 						if (!messageReceived) {
 							alert("[ERROR] blobUrl and fileName is missing, Please screenshot this to jiaqi.yi.ny@gmail.com");
 						}
-					}, 3000); // 3000ms = 3 seconds
+					}, 3060); // 3000ms = 3 seconds
 				}
 			} else {//load cloud,
 				console.log("Loading online model,serial:", serial)
@@ -256,9 +259,15 @@
 							if (imTheAuthur) {
 								console.log("[Validated] The user is the authur")
 								createConfigUI(modelObject, false, authorUID, blobUrl)
+
+								createExitUI()
+								createJoystickUI()
 							} else {
 								console.log("[Validated] The user is Not the authur")
 								createConfigUI(modelObject, false, authorUID)
+
+								createExitUI()
+								createJoystickUI()
 							}
 							createCommentUI()
 							createShortcutsUI()
@@ -335,114 +344,132 @@
 
 	</script>
 	<style>
-        .notification-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            flex-direction: column-reverse;
-            gap: 8px;
-            z-index: 1001;
-        }
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+			overflow: hidden;
+			height: 100%;
+		}
 
-        .pointer-hint {
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 13px;
-            pointer-events: none;
-            opacity: 0;
-            transition: all 0.3s ease;
-            transform: translateX(100%);
-        }
+		canvas {
+			display: block;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			touch-action: none;
+		}
 
-        .pointer-hint.visible {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    </style>
+		.notification-container {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+			display: flex;
+			flex-direction: column-reverse;
+			gap: 8px;
+			z-index: 1001;
+		}
+
+		.pointer-hint {
+			background-color: rgba(0, 0, 0, 0.8);
+			color: white;
+			padding: 8px 12px;
+			border-radius: 4px;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			font-size: 13px;
+			pointer-events: none;
+			opacity: 0;
+			transition: all 0.3s ease;
+			transform: translateX(100%);
+		}
+
+		.pointer-hint.visible {
+			opacity: 1;
+			transform: translateX(0);
+		}
+	</style>
 </head>
 
 <body>
-    <div class="notification-container">
-        <div id="pointer-hint" class="pointer-hint">Click anywhere to start</div>
-    </div>
-    <div id="container"></div>
+	<div class="notification-container">
+		<div id="pointer-hint" class="pointer-hint">Click anywhere to start</div>
+	</div>
+	<div id="container"></div>
 	<div id="viewer-container"></div>
 	<div id="config-window" class="popup hidden"></div>
 	<div id="feedback-window" class="popup hidden"></div>
 	<script type="module">
-        // Add this to your existing script
-        document.addEventListener('DOMContentLoaded', () => {
-            const hint = document.getElementById('pointer-hint');
-            hint.classList.add('visible');
-            
-            // Hide the hint when pointer is locked
-            document.addEventListener('pointerlockchange', () => {
-                if (document.pointerLockElement) {
-                    hint.classList.remove('visible');
-                }
-            });
+		// Add this to your existing script
+		document.addEventListener('DOMContentLoaded', () => {
+			const hint = document.getElementById('pointer-hint');
+			hint.classList.add('visible');
 
-            // Don't show hint immediately, wait for hideLoadingGear
-            document.addEventListener('mousedown', () => {
-                if (!document.pointerLockElement) {
-                    hint.textContent = 'Press ESC to show cursor';
-                }
-            });
+			// Hide the hint when pointer is locked
+			document.addEventListener('pointerlockchange', () => {
+				if (document.pointerLockElement) {
+					hint.classList.remove('visible');
+				}
+			});
 
-            document.addEventListener('pointerlockchange', () => {
-                if (document.pointerLockElement) {
-                    hint.classList.remove('visible');
-                } else {
-                    hint.textContent = 'Click anywhere to start';
-                    hint.classList.add('visible');
-                }
-            });
-        });
-    </script>
+			// Don't show hint immediately, wait for hideLoadingGear
+			document.addEventListener('mousedown', () => {
+				if (!document.pointerLockElement) {
+					hint.textContent = 'Press ESC to show cursor';
+				}
+			});
+
+			document.addEventListener('pointerlockchange', () => {
+				if (document.pointerLockElement) {
+					hint.classList.remove('visible');
+				} else {
+					hint.textContent = 'Click anywhere to start';
+					hint.classList.add('visible');
+				}
+			});
+		});
+	</script>
 	<script type="module">
-    document.addEventListener('DOMContentLoaded', () => {
-        const container = document.querySelector('.notification-container');
-        let messageCount = 0;
+		document.addEventListener('DOMContentLoaded', () => {
+			const container = document.querySelector('.notification-container');
+			let messageCount = 0;
 
-        function showMessage(text) {
-            const hint = document.createElement('div');
-            hint.className = 'pointer-hint';
-            hint.textContent = text;
-            container.appendChild(hint);
+			function showMessage(text) {
+				const hint = document.createElement('div');
+				hint.className = 'pointer-hint';
+				hint.textContent = text;
+				container.appendChild(hint);
 
-            // Show message
-            setTimeout(() => hint.classList.add('visible'), 10);
+				// Show message
+				setTimeout(() => hint.classList.add('visible'), 10);
 
-            // Remove message after 3 seconds
-            setTimeout(() => {
-                hint.classList.remove('visible');
-                setTimeout(() => hint.remove(), 300); // Wait for fade out animation
-            }, 3000);
-        }
+				// Remove message after 3 seconds
+				setTimeout(() => {
+					hint.classList.remove('visible');
+					setTimeout(() => hint.remove(), 300); // Wait for fade out animation
+				}, 3060);
+			}
 
-        // Show initial message
-        showMessage('Click anywhere to start');
+			// Show initial message
+			showMessage('Click anywhere to start');
 
-        // Update messages based on pointer lock
-        document.addEventListener('mousedown', () => {
-            if (!document.pointerLockElement) {
-                showMessage('Press ESC to show cursor');
-            }
-        });
+			// Update messages based on pointer lock
+			document.addEventListener('mousedown', () => {
+				if (!document.pointerLockElement) {
+					showMessage('Press ESC to show cursor');
+				}
+			});
 
-        document.addEventListener('pointerlockchange', () => {
-            if (document.pointerLockElement) {
-                // Don't show any message when entering pointer lock
-            } else {
-                showMessage('Click anywhere to start');
-            }
-        });
-    });
-</script>
+			document.addEventListener('pointerlockchange', () => {
+				if (document.pointerLockElement) {
+					// Don't show any message when entering pointer lock
+				} else {
+					showMessage('Click anywhere to start');
+				}
+			});
+		});
+	</script>
 </body>
 
 </html>

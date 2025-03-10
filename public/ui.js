@@ -8,7 +8,23 @@ let isUploaded = false;  // Module-level state
 const UI_POSITIONS = {
     config: { hidden: '-500px', visible: '20px', top: '60px' },
     comment: { hidden: '-500px', visible: '20px', top: '65px' },
-    shortcuts: { hidden: '-500px', visible: '20px', bottom: '20px' }  // Add bottom position
+    shortcuts: { hidden: '-500px', visible: '20px', bottom: '20px' },  // Add bottom position
+    exit: {
+        hidden: {
+            mobile: '50%', // Center position for mobile
+            desktop: '-150px' // Off-screen for desktop
+        },
+        visible: '20px',
+        bottom: '20px'
+    },
+    joystick: {
+        hidden: {
+            mobile: '50px',
+            desktop: '-150px'
+        },
+        visible: '50px',
+        bottom: '50px'
+    }
 };
 
 // Add styles
@@ -22,7 +38,21 @@ uiStyle.textContent = `
         gap: 10px;
         border-radius: 8px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        max-width: 400px; /* Limit the width */
+        max-width: 400px;
+        user-select: none;          /* Prevent text selection */
+        -webkit-user-select: none;  /* Safari specific */
+        -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+        touch-action: none;         /* Prevent default touch actions */
+        pointer-events: auto;       /* Ensure UI elements still receive events */
+    }
+
+    /* Allow pointer events on specific interactive elements */
+    .floating-ui button,
+    .floating-ui input,
+    .floating-ui .clickable {
+        pointer-events: auto;
+        touch-action: manipulation; /* Optimize touch behavior */
     }
 
     .config-ui {
@@ -191,9 +221,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
                 <p><strong>Upload Date:</strong> <span class="config-value">${model_Object.upload_date || "yyyy.mm.dd"}</span></p>
                 <p><strong>Keywords:</strong> <span class="config-value">${keywordsString}</span></p>
                 <p><strong>Likes:</strong> <span class="config-value">${model_Object.likes || 0}</span></p>
-            </div>
-            <div class="button-group">
-                <button class="cancel-button" id="back">Back</button>
             </div>
         `;
     }
@@ -439,3 +466,190 @@ export function checkUIExistence() {
     }
     console.groupEnd();
 }
+
+// Add mobile detection function
+export function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+}
+
+// Add exit UI creation function
+export function createExitUI() {
+    const exitUI = document.createElement('div');
+    exitUI.className = 'floating-ui exit-ui';
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+
+    exitUI.innerHTML = `
+        <button class="exit-button" id="exitButton">Exit</button>
+    `;
+
+    const exitStyles = `
+        .exit-ui {
+            position: fixed;
+            right: ${isMobile ? UI_POSITIONS.exit.hidden.mobile : UI_POSITIONS.exit.hidden.desktop};
+            bottom: ${UI_POSITIONS.exit.bottom};
+            transition: all 0.3s ease-out;
+            z-index: 1000;
+            ${isMobile ? 'transform: translateX(50%);' : ''} /* Center the button for mobile */
+        }
+
+        .exit-ui.ui-visible {
+            right: ${UI_POSITIONS.exit.visible};
+            transform: translateX(0); /* Reset transform when visible */
+        }
+
+        .exit-button {
+            background-color: rgba(255, 75, 75, 0.9);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+
+        .exit-button:hover {
+            background-color: rgba(255, 45, 45, 0.9);
+        }
+    `;
+
+    if (!document.querySelector('#exit-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'exit-styles';
+        styleElement.textContent = exitStyles;
+        document.head.appendChild(styleElement);
+    }
+
+    exitUI.querySelector('#exitButton').addEventListener('click', () => {
+        window.location.href = '/';
+    });
+
+    const container = document.getElementById('container');
+    container.appendChild(exitUI);
+
+    document.addEventListener('pointerlockchange', () => {
+        const isLocked = document.pointerLockElement !== null;
+        exitUI.classList.toggle('ui-visible', !isLocked);
+    });
+
+    return exitUI;
+}
+
+export function createJoystickUI() {
+    const isMobile = isMobileDevice();
+    if (!isMobile) return null; // Only create joystick for mobile devices
+
+    const joystickUI = document.createElement('div');
+    joystickUI.className = 'floating-ui joystick-ui';
+    joystickUI.id = 'joystick';
+
+    const joystickStyles = `
+        .joystick-ui {
+            position: fixed;
+            left: ${UI_POSITIONS.joystick.hidden.mobile};
+            bottom: ${UI_POSITIONS.joystick.bottom};
+            width: 150px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 50%;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+            opacity: 0.5;
+            touch-action: none;
+        }
+
+        .joystick-ui.ui-visible {
+            opacity: 1;
+        }
+
+        .joystick-ui:active {
+            opacity: 0.8;
+        }
+    `;
+
+    if (!document.querySelector('#joystick-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'joystick-styles';
+        styleElement.textContent = joystickStyles;
+        document.head.appendChild(styleElement);
+    }
+
+    const container = document.getElementById('container');
+    container.appendChild(joystickUI);
+
+    // Initialize nipplejs
+    const joystick = nipplejs.create({
+        zone: joystickUI,
+        mode: 'static',
+        position: { left: '50%', bottom: '50%' },
+        color: 'white',
+        size: 100
+    });
+
+    // Connect to camera movement
+    joystick.on('move', (evt, data) => {
+        // Forward/backward movement
+        // Left/right movement
+        const cap = 50
+        const forward = Math.min(data.vector.y, cap);
+        const side = Math.min(data.vector.x, cap);
+
+
+        // Update camera movement through a custom event
+        const moveEvent = new CustomEvent('joystickMove', {
+            detail: {
+                forward: forward,
+                side: side,
+                force: Math.min(data.force, 1.2) // Optional: for speed control
+            }
+        });
+        document.dispatchEvent(moveEvent);
+    });
+
+    // Add normalization function
+    function normalizeJoystickValue(value, force) {
+        // Cap the maximum force at 1.0
+        const normalizedForce = Math.min(force, 1.0);
+        // Normalize and cap the value between -1 and 1
+        return Math.max(Math.min(value * normalizedForce, 1.0), -1.0);
+    }
+
+    // Update the joystick event handler
+    joystick.on('move', (evt, data) => {
+        // Normalize the vectors with force cap
+        const forward = normalizeJoystickValue(data.vector.y, data.force);
+        const side = normalizeJoystickValue(data.vector.x, data.force);
+
+        const moveEvent = new CustomEvent('joystickMove', {
+            detail: {
+                forward: forward,
+                side: side,
+                force: Math.min(data.force, 1.0) // Cap maximum force
+            }
+        });
+        document.dispatchEvent(moveEvent);
+    });
+
+    // Add handler for joystick release
+    joystick.on('end', () => {
+        const moveEvent = new CustomEvent('joystickMove', {
+            detail: {
+                forward: 0,
+                side: 0,
+                force: 0
+            }
+        });
+        document.dispatchEvent(moveEvent);
+    });
+
+    // Handle pointer lock visibility
+    document.addEventListener('pointerlockchange', () => {
+        const isLocked = document.pointerLockElement !== null;
+        joystickUI.classList.toggle('ui-visible', !isLocked);
+    });
+
+    return joystickUI;
+}
+

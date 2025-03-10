@@ -6,8 +6,11 @@ const app = express();
 app.use(express.text({ type: 'text/*' }));  // Ensure that it handles any text content, including CSV
 app.use(express.json());
 const path = require('path');
-const cors = require('cors');
-app.use(cors());
+const cors = require('cors');//Jiaqis-MacBook-Pro.local
+app.use(cors({
+    origin: ['http://localhost:3001', 'http://jiaqis-macbook-pro.local:3001'],
+    credentials: true,
+  }));
 const csv = require('csv-parser');
 const fs = require('fs');
 const { PassThrough } = require("stream");
@@ -224,7 +227,7 @@ app.get('/logout', (req, res) => {
 
 
 // app.set('view engine', 'ejs');
-const PORT = 3000;
+const PORT = 3001;
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
 });

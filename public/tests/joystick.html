@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Joystick Debug Display</title>
+    <style>
+        #joystick {
+            width: 150px;      /* Match the joystick size */
+            height: 150px;     /* Match the joystick size */
+            position: fixed;
+            bottom: 50px;      /* Match position settings */
+            left: 50px;       /* Match position settings */
+            background: rgba(0, 0, 0, 0.2); /* Add visible background */
+            border-radius: 50%;  /* Make it circular */
+        }
+
+        #debug-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+        }
+
+        .label {
+            margin-right: 15px;
+            color: #aaa;
+        }
+
+        .value {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div id="joystick"></div>
+    <div id="debug-display">
+        <h3>Joystick Values:</h3>
+        <div class="value-display">
+            <span class="label">Forward:</span>
+            <span class="value" id="forward-value">0</span>
+        </div>
+        <div class="value-display">
+            <span class="label">Side:</span>
+            <span class="value" id="side-value">0</span>
+        </div>
+        <div class="value-display">
+            <span class="label">Force:</span>
+            <span class="value" id="force-value">0</span>
+        </div>
+        <div class="value-display">
+            <span class="label">Normalized Forward:</span>
+            <span class="value" id="norm-forward-value">0</span>
+        </div>
+        <div class="value-display">
+            <span class="label">Normalized Side:</span>
+            <span class="value" id="norm-side-value">0</span>
+        </div>
+    </div>
+
+    <script src="../lib/nipple.js"></script>
+    <script>
+        function normalizeJoystickValue(value, force) {
+            const normalizedForce = Math.min(force, 1.0);
+            return Math.max(Math.min(value * normalizedForce, 1.0), -1.0);
+        }
+
+        const joystick = nipplejs.create({
+            zone: document.getElementById('joystick'),
+            mode: 'static',
+            position: { left: '75px', bottom: '75px' }, // Center of the container
+            color: 'white',
+            size: 100
+        });
+
+        function updateDisplay(values) {
+            document.getElementById('forward-value').textContent = values.forward.toFixed(3);
+            document.getElementById('side-value').textContent = values.side.toFixed(3);
+            document.getElementById('force-value').textContent = values.force.toFixed(3);
+            document.getElementById('norm-forward-value').textContent = values.normForward.toFixed(3);
+            document.getElementById('norm-side-value').textContent = values.normSide.toFixed(3);
+        }
+
+        joystick.on('move', (evt, data) => {
+            const cap = 50;
+            const forward = Math.min(data.vector.y, cap);
+            const side = Math.min(data.vector.x, cap);
+            const force = data.force;
+
+            const normForward = normalizeJoystickValue(data.vector.y, force);
+            const normSide = normalizeJoystickValue(data.vector.x, force);
+
+            updateDisplay({
+                forward,
+                side,
+                force,
+                normForward,
+                normSide
+            });
+        });
+
+        joystick.on('end', () => {
+            updateDisplay({
+                forward: 0,
+                side: 0,
+                force: 0,
+                normForward: 0,
+                normSide: 0
+            });
+        });
+    </script>
+</body>
+</html>

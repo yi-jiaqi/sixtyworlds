@@ -5,14 +5,22 @@
 	<title>Sixty Worlds - Prototype 1.2</title>
 	<link rel="stylesheet" href="/style.css">
 
-	<script type="importmap">
+	<!-- <script type="importmap">
 		{
 			"imports": {
 				"three": "https://unpkg.com/three@0.159.0/build/three.module.js",
 				"three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
 			}
 		}
-		</script>
+		</script> -->
+
+		<script type="importmap">
+			{
+			  "imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "../jsm/"
+			  }
+			}</script>
 	<script type="module">
 		import { loadPreviews, fetchUserState, updateMyWorldsButton,dynamicMargin } from './script.js';
 		let currentIndex = 0;

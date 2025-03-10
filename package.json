@@ -4,7 +4,7 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "cross-env PORT=3001 node app.js"
   },
   "author": "",
   "license": "ISC",
@@ -22,5 +22,8 @@
     "express": "^4.21.1",
     "express-session": "^1.18.1",
     "openid-client": "^5.7.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3"
   }
 }

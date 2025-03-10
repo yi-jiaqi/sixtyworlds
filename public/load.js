@@ -39,6 +39,10 @@ const LIGHT_SETTINGS = {
 const STANDARD_GRAVITY = 30;
 let currentGravity = STANDARD_GRAVITY;
 const STEPS_PER_FRAME = 5;
+const TOUCH_SENSITIVITY = 0.007; // Adjust this value to control rotation speed
+let lastTouchX = 0;
+let lastTouchY = 0;
+let isTouchRotating = false;
 
 function initializeContainer() {
 	const container = document.getElementById('container');
@@ -112,6 +116,13 @@ container?.addEventListener('mousedown', () => {
 
 	mouseTime = performance.now();
 
+});
+
+document.addEventListener('keydown', (event) => {
+	if (event.key === '`' || event.key === '~') {
+		document.exitPointerLock();
+		console.log('Pointer lock exited using ` or ~.');
+	}
 });
 
 document.body.addEventListener('mousemove', (event) => {
@@ -269,6 +280,27 @@ function controls(deltaTime) {
 
 		}
 	}
+
+	// Add joystick controls
+	document.addEventListener('joystickMove', (event) => {
+		const speedDelta = deltaTime *(playerOnFloor ? 25 : 8);
+		// console.log(speedDelta)
+		const { forward, side, force } = event.detail;
+		const joystickFactor=0.001;
+		// Apply forward/backward movement
+		if (forward !== 0) {
+			playerVelocity.add(
+				getForwardVector().multiplyScalar(speedDelta * forward * force*joystickFactor)
+			);
+		}
+
+		// Apply left/right movement
+		if (side !== 0) {
+			playerVelocity.add(
+				getSideVector().multiplyScalar(speedDelta * side * force*joystickFactor)
+			);
+		}
+	});
 }
 
 function teleportPlayerIfOob() {
@@ -625,3 +657,67 @@ export function getCurrentPosRot() {
         Number(rot.z.toFixed(3))
     ];
 }
+
+function initializeTouchControls() {
+    if (!container) return;
+
+    let rotationTouch = null;
+
+    container.addEventListener('touchstart', (event) => {
+        const joystickElement = document.querySelector('.joystick-ui');
+        const joystickRect = joystickElement?.getBoundingClientRect();
+
+        // Check each new touch
+        Array.from(event.changedTouches).forEach(touch => {
+            // Check if touch is in joystick area
+            const isJoystickTouch = joystickRect && (
+                touch.clientX >= joystickRect.left &&
+                touch.clientX <= joystickRect.right &&
+                touch.clientY >= joystickRect.top &&
+                touch.clientY <= joystickRect.bottom
+            );
+
+            // If it's not a joystick touch and we don't have a rotation touch yet
+            if (!isJoystickTouch && !rotationTouch) {
+                rotationTouch = touch.identifier;
+                lastTouchX = touch.clientX;
+                lastTouchY = touch.clientY;
+                isTouchRotating = true;
+            }
+        });
+    });
+
+    container.addEventListener('touchmove', (event) => {
+        // Find our rotation touch if it exists
+        const touch = Array.from(event.touches).find(t => t.identifier === rotationTouch);
+        if (touch && isTouchRotating) {
+            const movementX = touch.clientX - lastTouchX;
+            const movementY = touch.clientY - lastTouchY;
+
+            camera.rotation.y -= movementX * TOUCH_SENSITIVITY;
+            camera.rotation.x -= movementY * TOUCH_SENSITIVITY;
+            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+        }
+    });
+
+    container.addEventListener('touchend', (event) => {
+        // Check if our rotation touch ended
+        Array.from(event.changedTouches).forEach(touch => {
+            if (touch.identifier === rotationTouch) {
+                rotationTouch = null;
+                isTouchRotating = false;
+            }
+        });
+    });
+
+    // Handle cases where touches might get interrupted
+    container.addEventListener('touchcancel', (event) => {
+        rotationTouch = null;
+        isTouchRotating = false;
+    });
+}
+
+initializeTouchControls();
