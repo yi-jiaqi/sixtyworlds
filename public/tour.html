@@ -4,7 +4,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-	<title>Sixty Worlds - Prototype 1.2</title>
+	<title>Sixty Worlds - Prototype 1.5</title>
 	<link rel="stylesheet" href="/style.css">
 	<script src="/lib/nipple.js"></script>
 	<script type="importmap">
@@ -39,7 +39,7 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI,createJoystickUI } from './ui.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI, createJoystickUI, createActionUI, showMessage } from './ui.js';
 		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
 		import { uploadWorld } from './upload.js';
@@ -225,6 +225,7 @@
 					createConfigUI(modelObject, true, authorUID, blobUrl)
 					createExitUI()
 					createJoystickUI()
+					createActionUI()
 
 
 				} else {
@@ -259,15 +260,15 @@
 							if (imTheAuthur) {
 								console.log("[Validated] The user is the authur")
 								createConfigUI(modelObject, false, authorUID, blobUrl)
-
 								createExitUI()
 								createJoystickUI()
+								createActionUI()
 							} else {
 								console.log("[Validated] The user is Not the authur")
 								createConfigUI(modelObject, false, authorUID)
-
 								createExitUI()
 								createJoystickUI()
+								createActionUI()
 							}
 							createCommentUI()
 							createShortcutsUI()
@@ -362,33 +363,7 @@
 			touch-action: none;
 		}
 
-		.notification-container {
-			position: fixed;
-			bottom: 20px;
-			right: 20px;
-			display: flex;
-			flex-direction: column-reverse;
-			gap: 8px;
-			z-index: 1001;
-		}
 
-		.pointer-hint {
-			background-color: rgba(0, 0, 0, 0.8);
-			color: white;
-			padding: 8px 12px;
-			border-radius: 4px;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-			font-size: 13px;
-			pointer-events: none;
-			opacity: 0;
-			transition: all 0.3s ease;
-			transform: translateX(100%);
-		}
-
-		.pointer-hint.visible {
-			opacity: 1;
-			transform: translateX(0);
-		}
 	</style>
 </head>
 
@@ -401,6 +376,11 @@
 	<div id="config-window" class="popup hidden"></div>
 	<div id="feedback-window" class="popup hidden"></div>
 	<script type="module">
+
+
+		import { showMessage } from './ui.js';
+
+
 		// Add this to your existing script
 		document.addEventListener('DOMContentLoaded', () => {
 			const hint = document.getElementById('pointer-hint');
@@ -420,39 +400,15 @@
 				}
 			});
 
-			document.addEventListener('pointerlockchange', () => {
-				if (document.pointerLockElement) {
-					hint.classList.remove('visible');
-				} else {
-					hint.textContent = 'Click anywhere to start';
-					hint.classList.add('visible');
-				}
-			});
-		});
-	</script>
-	<script type="module">
-		document.addEventListener('DOMContentLoaded', () => {
-			const container = document.querySelector('.notification-container');
-			let messageCount = 0;
+			// document.addEventListener('pointerlockchange', () => {
+			// 	if (document.pointerLockElement) {
+			// 		hint.classList.remove('visible');
+			// 	} else {
+			// 		hint.textContent = 'Click anywhere to start';
+			// 		hint.classList.add('visible');
+			// 	}
+			// });
 
-			function showMessage(text) {
-				const hint = document.createElement('div');
-				hint.className = 'pointer-hint';
-				hint.textContent = text;
-				container.appendChild(hint);
-
-				// Show message
-				setTimeout(() => hint.classList.add('visible'), 10);
-
-				// Remove message after 3 seconds
-				setTimeout(() => {
-					hint.classList.remove('visible');
-					setTimeout(() => hint.remove(), 300); // Wait for fade out animation
-				}, 3060);
-			}
-
-			// Show initial message
-			showMessage('Click anywhere to start');
 
 			// Update messages based on pointer lock
 			document.addEventListener('mousedown', () => {

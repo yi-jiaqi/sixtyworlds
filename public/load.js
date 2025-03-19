@@ -6,6 +6,7 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+import {  showLoadingGear, hideLoadingGear,showMessage } from './ui.js';
 const BASE_URL = 'https://sixtyworlds.com';
 const clock = new THREE.Clock();
 export const scene = new THREE.Scene();
@@ -13,28 +14,27 @@ scene.background = new THREE.Color(0x88ccee);
 scene.fog = new THREE.Fog(0x88ccee, 0, 50);
 export const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = 'YXZ';
-let fillLight1 = new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5);
-fillLight1.position.set(2, 1, 1);
-scene.add(fillLight1);
 
-const LIGHT_SETTINGS = {
-	HIGH: {
-		skyColor: 0xffffff,
-		groundColor: 0x8dc1de,
-		intensity: 2.5
-	},
-	NORMAL: {
-		skyColor: 0x8dc1de,
-		groundColor: 0x00668d,
-		intensity: 1.5
-	},
-	DARK: {
-		skyColor: 0x444444,
-		groundColor: 0x000000,
-		intensity: 0.5
-	}
+let currentMoveMode = 'fly'
+
+// Replace the single fillLight1 declaration with three lights
+const lights = {
+    HIGH: new THREE.HemisphereLight(0xffffff, 0x8dc1de, 2.5),
+    NORMAL: new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5),
+    DARK: new THREE.HemisphereLight(0x444444, 0x000000, 0.5)
 };
 
+// Initialize all lights with the same position
+Object.values(lights).forEach(light => {
+    light.position.set(2, 1, 1);
+    scene.add(light);
+});
+
+// Set initial visibility
+let currentLightMode = 'NORMAL';
+Object.entries(lights).forEach(([mode, light]) => {
+    light.visible = mode === currentLightMode;
+});
 
 const STANDARD_GRAVITY = 30;
 let currentGravity = STANDARD_GRAVITY;
@@ -43,6 +43,11 @@ const TOUCH_SENSITIVITY = 0.007; // Adjust this value to control rotation speed
 let lastTouchX = 0;
 let lastTouchY = 0;
 let isTouchRotating = false;
+
+// Add at the top with other constants
+const TOGGLE_COOLDOWN = 500; // 500ms cooldown
+let lastLightToggleTime = 0;  // Rename existing variable
+let lastMoveToggleTime = 0;   // Add new variable for move mode
 
 function initializeContainer() {
 	const container = document.getElementById('container');
@@ -243,6 +248,48 @@ function getSideVector() {
 	return playerDirection;
 
 }
+
+
+export function toggleMoveMode() {
+	if (currentMoveMode == 'fly') {
+		currentMoveMode = 'walk'
+		currentGravity = STANDARD_GRAVITY
+		showMessage('Move Mode: Walk')
+	} else {
+		currentMoveMode = 'fly'
+		currentGravity = STANDARD_GRAVITY / 6;
+		showMessage('Move Mode: Fly')
+	}
+	return currentMoveMode
+}
+
+// Update the toggleLighting function
+export function toggleLighting() {
+    // Previous light becomes invisible
+    lights[currentLightMode].visible = false;
+    
+    // Update current mode
+    switch (currentLightMode) {
+        case 'NORMAL':
+            currentLightMode = 'HIGH';
+            showMessage('Lighting Mode: High');
+            break;
+        case 'HIGH':
+            currentLightMode = 'DARK';
+            showMessage('Lighting Mode: Dark');
+            break;
+        case 'DARK':
+            currentLightMode = 'NORMAL';
+            showMessage('Lighting Mode: Normal');
+            break;
+    }
+    
+    // New light becomes visible
+    lights[currentLightMode].visible = true;
+    
+    return currentLightMode;
+}
+
 function controls(deltaTime) {
 
 	// gives a bit of air control
@@ -272,6 +319,23 @@ function controls(deltaTime) {
 
 	}
 
+	if (keyStates['KeyF']) {
+		const currentTime = performance.now();
+		if (currentTime - lastMoveToggleTime > TOGGLE_COOLDOWN) {
+			toggleMoveMode();
+			lastMoveToggleTime = currentTime;
+		}
+	}
+
+	if (keyStates['KeyN']) {
+		const currentTime = performance.now();
+		if (currentTime - lastLightToggleTime > TOGGLE_COOLDOWN) {
+			toggleLighting();
+			console.log('Changing Lighting Mode from:', currentLightMode);
+			lastLightToggleTime = currentTime;
+		}
+	}
+
 	if (playerOnFloor) {
 
 		if (keyStates['Space']) {
@@ -279,25 +343,32 @@ function controls(deltaTime) {
 			playerVelocity.y = 15;
 
 		}
+
+		document.addEventListener('jumpAction', (event) => {
+			const { jump } = event.detail;
+			if (jump && playerOnFloor) {
+				playerVelocity.y = 15;
+			}
+		});
 	}
 
 	// Add joystick controls
 	document.addEventListener('joystickMove', (event) => {
-		const speedDelta = deltaTime *(playerOnFloor ? 25 : 8);
+		const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
 		// console.log(speedDelta)
 		const { forward, side, force } = event.detail;
-		const joystickFactor=0.001;
+		const joystickFactor = 0.001;
 		// Apply forward/backward movement
 		if (forward !== 0) {
 			playerVelocity.add(
-				getForwardVector().multiplyScalar(speedDelta * forward * force*joystickFactor)
+				getForwardVector().multiplyScalar(speedDelta * forward * force * joystickFactor)
 			);
 		}
 
 		// Apply left/right movement
 		if (side !== 0) {
 			playerVelocity.add(
-				getSideVector().multiplyScalar(speedDelta * side * force*joystickFactor)
+				getSideVector().multiplyScalar(speedDelta * side * force * joystickFactor)
 			);
 		}
 	});
@@ -549,50 +620,6 @@ export function loadModel(modelObject, onComplete) {
 
 // fetchAndRenderCSVData();
 
-export function testA() {
-	console.log("testA")
-}
-
-// Function to show the loading gear
-function showLoadingGear() {
-	const gear = document.createElement('div');
-	gear.id = 'loadingGear';
-	gear.style.width = '50px';
-	gear.style.height = '50px';
-	gear.style.border = '5px solid #ccc';
-	gear.style.borderTop = '5px solid #333';
-	gear.style.borderRadius = '50%';
-	gear.style.animation = 'spin 1s linear infinite';
-	gear.style.position = 'fixed';
-	gear.style.top = '50%';
-	gear.style.left = '50%';
-	gear.style.transform = 'translate(-50%, -50%)';
-
-	// Progress Text
-	const progressText = document.createElement('div');
-	progressText.id = 'loadingProgress';
-	progressText.style.position = 'absolute';
-	progressText.style.top = '60px';
-	progressText.style.left = '50%';
-	progressText.style.transform = 'translateX(-50%)';
-	progressText.style.color = '#333';
-	progressText.style.fontSize = '14px';
-	progressText.style.fontWeight = 'bold';
-	progressText.innerText = '0%';
-
-	// Append gear and progress text
-	document.body.appendChild(progressText);
-	document.body.appendChild(gear);
-}
-
-// Function to hide the rotating gear
-function hideLoadingGear() {
-	const gear = document.getElementById('loadingGear');
-	if (gear) {
-		document.body.removeChild(gear);
-	}
-}
-
 // Function to update the loading progression
 function updateLoadingGear(progression) {
 	const progressText = document.getElementById('loadingProgress');
@@ -603,121 +630,96 @@ function updateLoadingGear(progression) {
 	}
 }
 
-let currentMoveMode = 'fly'
-export function toggleMoveMode() {
-	if (currentMoveMode == 'fly') {
-		currentMoveMode = 'walk'
-		currentGravity = STANDARD_GRAVITY
 
-	} else {
-		currentMoveMode = 'fly'
-		currentGravity = STANDARD_GRAVITY/6;
-	}
-	return currentMoveMode
-}
-
-let currentLightMode = 'NORMAL';
-
-export function toggleLighting() {
-	switch (currentLightMode) {
-		case 'NORMAL':
-			currentLightMode = 'HIGH';
-			break;
-		case 'HIGH':
-			currentLightMode = 'DARK';
-			break;
-		case 'DARK':
-			currentLightMode = 'NORMAL';
-			break;
-
-	}
-
-	const settings = LIGHT_SETTINGS[currentLightMode];
-	fillLight1.skyColor.setHex(settings.skyColor);
-	fillLight1.groundColor.setHex(settings.groundColor);
-	fillLight1.intensity = settings.intensity;
-
-	return currentLightMode;
-}
 
 
 export function getCurrentPosRot() {
-    // Get position (x, y, z)
-    const pos = camera.position;
-    // Get rotation (x, y, z) in radians
-    const rot = camera.rotation;
-    
-    // Return array of 6 values: [posX, posY, posZ, rotX, rotY, rotZ]
-    return [
-        Number(pos.x.toFixed(3)),
-        Number(pos.y.toFixed(3)),
-        Number(pos.z.toFixed(3)),
-        Number(rot.x.toFixed(3)),
-        Number(rot.y.toFixed(3)),
-        Number(rot.z.toFixed(3))
-    ];
+	// Get position (x, y, z)
+	const pos = camera.position;
+	// Get rotation (x, y, z) in radians
+	const rot = camera.rotation;
+
+	// Return array of 6 values: [posX, posY, posZ, rotX, rotY, rotZ]
+	return [
+		Number(pos.x.toFixed(3)),
+		Number(pos.y.toFixed(3)),
+		Number(pos.z.toFixed(3)),
+		Number(rot.x.toFixed(3)),
+		Number(rot.y.toFixed(3)),
+		Number(rot.z.toFixed(3))
+	];
 }
 
 function initializeTouchControls() {
-    if (!container) return;
+	if (!container) return;
 
-    let rotationTouch = null;
+	let rotationTouch = null;
 
-    container.addEventListener('touchstart', (event) => {
-        const joystickElement = document.querySelector('.joystick-ui');
-        const joystickRect = joystickElement?.getBoundingClientRect();
+	container.addEventListener('touchstart', (event) => {
+		const joystickElement = document.querySelector('.joystick-ui');
+		const joystickRect = joystickElement?.getBoundingClientRect();
 
-        // Check each new touch
-        Array.from(event.changedTouches).forEach(touch => {
-            // Check if touch is in joystick area
-            const isJoystickTouch = joystickRect && (
-                touch.clientX >= joystickRect.left &&
-                touch.clientX <= joystickRect.right &&
-                touch.clientY >= joystickRect.top &&
-                touch.clientY <= joystickRect.bottom
-            );
+		// Check each new touch
+		Array.from(event.changedTouches).forEach(touch => {
+			// Check if touch is in joystick area
+			const isJoystickTouch = joystickRect && (
+				touch.clientX >= joystickRect.left &&
+				touch.clientX <= joystickRect.right &&
+				touch.clientY >= joystickRect.top &&
+				touch.clientY <= joystickRect.bottom
+			);
 
-            // If it's not a joystick touch and we don't have a rotation touch yet
-            if (!isJoystickTouch && !rotationTouch) {
-                rotationTouch = touch.identifier;
-                lastTouchX = touch.clientX;
-                lastTouchY = touch.clientY;
-                isTouchRotating = true;
-            }
-        });
-    });
+			// If it's not a joystick touch and we don't have a rotation touch yet
+			if (!isJoystickTouch && !rotationTouch) {
+				rotationTouch = touch.identifier;
+				lastTouchX = touch.clientX;
+				lastTouchY = touch.clientY;
+				isTouchRotating = true;
+			}
+		});
+	});
 
-    container.addEventListener('touchmove', (event) => {
-        // Find our rotation touch if it exists
-        const touch = Array.from(event.touches).find(t => t.identifier === rotationTouch);
-        if (touch && isTouchRotating) {
-            const movementX = touch.clientX - lastTouchX;
-            const movementY = touch.clientY - lastTouchY;
+	container.addEventListener('touchmove', (event) => {
+		// Find our rotation touch if it exists
+		const touch = Array.from(event.touches).find(t => t.identifier === rotationTouch);
+		if (touch && isTouchRotating) {
+			const movementX = touch.clientX - lastTouchX;
+			const movementY = touch.clientY - lastTouchY;
 
-            camera.rotation.y -= movementX * TOUCH_SENSITIVITY;
-            camera.rotation.x -= movementY * TOUCH_SENSITIVITY;
-            camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+			camera.rotation.y -= movementX * TOUCH_SENSITIVITY;
+			camera.rotation.x -= movementY * TOUCH_SENSITIVITY;
+			camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
 
-            lastTouchX = touch.clientX;
-            lastTouchY = touch.clientY;
-        }
-    });
+			lastTouchX = touch.clientX;
+			lastTouchY = touch.clientY;
+		}
+	});
 
-    container.addEventListener('touchend', (event) => {
-        // Check if our rotation touch ended
-        Array.from(event.changedTouches).forEach(touch => {
-            if (touch.identifier === rotationTouch) {
-                rotationTouch = null;
-                isTouchRotating = false;
-            }
-        });
-    });
+	container.addEventListener('touchend', (event) => {
+		// Check if our rotation touch ended
+		Array.from(event.changedTouches).forEach(touch => {
+			if (touch.identifier === rotationTouch) {
+				rotationTouch = null;
+				isTouchRotating = false;
+			}
+		});
+	});
 
-    // Handle cases where touches might get interrupted
-    container.addEventListener('touchcancel', (event) => {
-        rotationTouch = null;
-        isTouchRotating = false;
-    });
+	// Handle cases where touches might get interrupted
+	container.addEventListener('touchcancel', (event) => {
+		rotationTouch = null;
+		isTouchRotating = false;
+	});
 }
+
+
+function gotoScene(){
+
+}
+
+function recordScene(){
+
+}
+
 
 initializeTouchControls();

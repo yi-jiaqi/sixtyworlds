@@ -24,6 +24,15 @@ const UI_POSITIONS = {
         },
         visible: '50px',
         bottom: '50px'
+    },
+    action: {
+        hidden: {
+            mobile: '20px',
+            desktop: '-150px'
+        },
+        visible: '20px',
+        bottom: '50px',
+        right: '50px'  // Position on right side, opposite to joystick
     }
 };
 
@@ -175,7 +184,7 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
     const keywordsString = keywordsArray.join(", ");
 
     const configUI = document.createElement("div");
-    configUI.className = "floating-ui config-ui";
+    configUI.className = "floating-ui config-ui ui-visible";
 
     // Add these styles to prioritize the UI
     configUI.style.zIndex = "1000"; // High z-index to stay on top
@@ -299,7 +308,11 @@ export const dynamicMargin = () => {
 export function createCommentUI() {
     // Create the comment UI element
     const commentUI = document.createElement("div");
-    commentUI.className = "floating-ui comment-ui";
+    commentUI.className = "floating-ui comment-ui ui-visible";
+
+
+    commentUI.addEventListener('mousedown', (e) => e.stopPropagation());
+    commentUI.addEventListener('click', (e) => e.stopPropagation());
 
     document.addEventListener('pointerlockchange', () => {
         const isLocked = document.pointerLockElement !== null;
@@ -337,7 +350,11 @@ function commentWrapper() {
 
 export function createShortcutsUI() {
     const shortcutsUI = document.createElement('div');
-    shortcutsUI.className = 'floating-ui shortcuts-ui';
+    shortcutsUI.className = 'floating-ui shortcuts-ui ui-visible';
+
+
+    shortcutsUI.addEventListener('mousedown', (e) => e.stopPropagation());
+    shortcutsUI.addEventListener('click', (e) => e.stopPropagation());
 
     document.addEventListener('pointerlockchange', () => {
         const isLocked = document.pointerLockElement !== null;
@@ -431,6 +448,23 @@ export function createShortcutsUI() {
     return shortcutsUI;
 }
 
+export 	function showMessage(text) {
+    const container = document.querySelector('.notification-container');
+    const hint = document.createElement('div');
+    hint.className = 'pointer-hint';
+    hint.textContent = text;
+    container.appendChild(hint);
+
+    // Show message
+    setTimeout(() => hint.classList.add('visible'), 10);
+
+    // Remove message after 3 seconds
+    setTimeout(() => {
+        hint.classList.remove('visible');
+        setTimeout(() => hint.remove(), 300); // Wait for fade out animation
+    }, 3060);
+}
+
 
 export function checkUIExistence() {
     // Update selectors to match multiple classes
@@ -477,11 +511,14 @@ export function isMobileDevice() {
 export function createExitUI() {
     const exitUI = document.createElement('div');
     exitUI.className = 'floating-ui exit-ui';
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-        || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+    const isMobile = isMobileDevice();
 
+    exitUI.addEventListener('mousedown', (e) => e.stopPropagation());
+    exitUI.addEventListener('click', (e) => e.stopPropagation());
+
+    // Create button with initial state
     exitUI.innerHTML = `
-        <button class="exit-button" id="exitButton">Exit</button>
+        <button class="exit-button" id="exitButton">Show</button>
     `;
 
     const exitStyles = `
@@ -491,12 +528,12 @@ export function createExitUI() {
             bottom: ${UI_POSITIONS.exit.bottom};
             transition: all 0.3s ease-out;
             z-index: 1000;
-            ${isMobile ? 'transform: translateX(50%);' : ''} /* Center the button for mobile */
+            ${isMobile ? 'transform: translateX(50%);' : ''} 
         }
 
         .exit-ui.ui-visible {
             right: ${UI_POSITIONS.exit.visible};
-            transform: translateX(0); /* Reset transform when visible */
+            transform: translateX(0);
         }
 
         .exit-button {
@@ -522,17 +559,29 @@ export function createExitUI() {
         document.head.appendChild(styleElement);
     }
 
-    exitUI.querySelector('#exitButton').addEventListener('click', () => {
-        window.location.href = '/';
+    const exitButton = exitUI.querySelector('#exitButton');
+    
+    // Handle button click based on current state
+    exitButton.addEventListener('click', () => {
+        const isLocked = document.pointerLockElement !== null;
+        if (isLocked) {
+            // If in pointer lock (hidden state), exit pointer lock
+            document.exitPointerLock();
+        } else {
+            // If not in pointer lock (visible state), exit to home
+            window.location.href = '/';
+        }
+    });
+
+    // Update button text based on pointer lock state
+    document.addEventListener('pointerlockchange', () => {
+        const isLocked = document.pointerLockElement !== null;
+        exitButton.textContent = isLocked ? 'Show' : 'Exit';
+        exitUI.classList.toggle('ui-visible', !isLocked);
     });
 
     const container = document.getElementById('container');
     container.appendChild(exitUI);
-
-    document.addEventListener('pointerlockchange', () => {
-        const isLocked = document.pointerLockElement !== null;
-        exitUI.classList.toggle('ui-visible', !isLocked);
-    });
 
     return exitUI;
 }
@@ -653,3 +702,94 @@ export function createJoystickUI() {
     return joystickUI;
 }
 
+// Add new function for action UI
+export function createActionUI() {
+    const isMobile = isMobileDevice();
+    if (!isMobile) return null; // Only create action UI for mobile devices
+
+    const actionUI = document.createElement('div');
+    actionUI.className = 'floating-ui action-ui';
+    actionUI.id = 'action';
+
+    const actionStyles = `
+        .action-ui {
+            position: fixed;
+            right: ${UI_POSITIONS.action.hidden.mobile};
+            bottom: ${UI_POSITIONS.action.bottom};
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+            opacity: 0.5;
+            touch-action: none;
+        }
+
+        .action-ui.ui-visible {
+            opacity: 0.6;
+        }
+
+        .jump-button {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .jump-button:active {
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(0.95);
+        }
+    `;
+
+    if (!document.querySelector('#action-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'action-styles';
+        styleElement.textContent = actionStyles;
+        document.head.appendChild(styleElement);
+    }
+
+    actionUI.innerHTML = `<button class="jump-button" id="jumpButton"></button>`;
+
+    const container = document.getElementById('container');
+    container.appendChild(actionUI);
+
+    // Add jump event
+    const jumpButton = actionUI.querySelector('#jumpButton');
+    jumpButton.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const jumpEvent = new CustomEvent('jumpAction', {
+            detail: { jump: true }
+        });
+        document.dispatchEvent(jumpEvent);
+    });
+
+    jumpButton.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const jumpEvent = new CustomEvent('jumpAction', {
+            detail: { jump: false }
+        });
+        document.dispatchEvent(jumpEvent);
+    });
+
+    // Handle pointer lock visibility
+    document.addEventListener('pointerlockchange', () => {
+        const isLocked = document.pointerLockElement !== null;
+        actionUI.classList.toggle('ui-visible', !isLocked);
+    });
+
+    return actionUI;
+}
+
+
+function createScenesUI(){
+
+}
+
+function addSceneCapsule(){
+    
+}
