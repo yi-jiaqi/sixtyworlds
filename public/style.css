@@ -261,6 +261,7 @@ footer {
 .floating-ui {
   position: fixed;
   padding: 20px;
+  gap:10px;
   background-color: rgba(248, 249, 250, 0.95);
   border: 1px solid #ddd;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);

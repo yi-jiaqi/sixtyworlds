@@ -1,5 +1,6 @@
 import { toggleMoveMode, toggleLighting, getCurrentPosRot } from './load.js';
 import { uploadWorld } from './upload.js';
+import { fetchUserState } from './script.js';
 
 // Add at the top of the file, outside any function
 let isUploaded = false;  // Module-level state
@@ -224,7 +225,7 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
         `;
     } else {
         configUI.innerHTML = `
-            <h3  style="margin: 0">${model_Object.model_name || "Untitled"}</h3>
+            <h2  style="margin: 0">${model_Object.model_name || "Untitled"}</h2>
             <div class="config-details">
                 <p><strong>Author:</strong> <span class="config-value">${model_Object.author_name || "Anonymous"}</span></p>
                 <p><strong>Upload Date:</strong> <span class="config-value">${model_Object.upload_date || "yyyy.mm.dd"}</span></p>
@@ -305,48 +306,125 @@ export const dynamicMargin = () => {
 };
 
 
-export function createCommentUI() {
-    // Create the comment UI element
+export function createCommentUI(model_Object) {
     const commentUI = document.createElement("div");
     commentUI.className = "floating-ui comment-ui ui-visible";
 
-
     commentUI.addEventListener('mousedown', (e) => e.stopPropagation());
     commentUI.addEventListener('click', (e) => e.stopPropagation());
+
+    // Initial HTML structure
+    commentUI.innerHTML = `
+        <h4 style="margin: 0 0 10px 0;">Comments</h4>
+        <div class="comments" style="gap:12px">
+            <div class="comment-input">
+                <input type="text" id="comment-box" placeholder="Add a comment..." class="comment-box" />
+                <button class="minor-btn" id="send-comment">Send</button>
+            </div>
+        </div>
+    `;
+
+    // Add function to load and display comments
+    async function loadComments() {
+        try {
+            const response = await fetch(`/api/comments?postId=${model_Object.serial}`);
+            console.log("Response: ", response);
+            if (!response.ok) throw new Error('Failed to fetch comments');
+            
+            const comments = await response.json();
+            const commentsContainer = commentUI.querySelector('.comments');
+            const inputBox = commentsContainer.querySelector('.comment-input');
+            
+            // Clear existing comments
+            commentsContainer.innerHTML = '';
+            
+            // Add comments in reverse chronological order
+            comments.forEach(comment => {
+                const commentElement = document.createElement('div');
+                commentElement.className = 'comment-item';
+                commentElement.innerHTML = `
+                    <span class="username">${comment.userId}:</span>
+                    <span class="comment-content">${comment.content}</span>
+                    <div class="comment-meta">
+                        <span class="comment-date">${new Date(comment.createdAt).toLocaleString()}</span>
+                    </div>
+                `;
+                commentsContainer.appendChild(commentElement);
+            });
+            
+            // Re-add the input box at the bottom
+            commentsContainer.appendChild(inputBox);
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            showMessage('Failed to load comments');
+        }
+    }
+
+    function makeCommentWrapper() {
+        const commentBox = commentUI.querySelector('#comment-box');
+        const sendButton = commentUI.querySelector('#send-comment');
+
+        sendButton.addEventListener('click', async () => {
+            const commentText = commentBox.value.trim();
+            if (!commentText) return;
+
+            try {
+                // Check authentication first
+                const { isAuthenticated, userInfo } = await fetchUserState();
+                
+                if (!isAuthenticated) {
+                    showMessage('Please sign in to comment');
+                    return;
+                }
+
+                const positionArray = getCurrentPosRot();
+                
+                const response = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        postId: model_Object.serial,
+                        content: commentText,
+                        positionArray: JSON.stringify(positionArray),
+                        parentId: null,
+                        userId: userInfo.sub,
+                        userName: userInfo.nickname || 'Anonymous'
+                    })
+                });
+
+                if (response.ok) {
+                    commentBox.value = '';
+                    await loadComments();
+                    showMessage('Comment posted successfully');
+                } else {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to post comment');
+                }
+            } catch (error) {
+                console.error('Error posting comment:', error);
+                showMessage(error.message);
+            }
+        });
+    }
+
+    // Initialize comment functionality
+    makeCommentWrapper();
+    loadComments(); // Load initial comments
+
+    const container = document.getElementById("container");
+    container.appendChild(commentUI);
 
     document.addEventListener('pointerlockchange', () => {
         const isLocked = document.pointerLockElement !== null;
         commentUI.classList.toggle('ui-visible', !isLocked);
     });
 
-    commentUI.innerHTML = `
-        <h3  style="margin: 0">Comments</h3>
-	  <div class="comments" style="gap:12px">
-		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">Thank you for visiting my website!</span>
-		</div>
-		<div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">It is still under construction!</span>
-		</div>
-        <div class="comment-item">
-		  <span class="username">Jiaqi(Author):</span> <span class="comment-content">The next prototype will be on March 19!</span>
-		</div>
-		<div class="comment-input">
-		  <input type="text" placeholder="Commenting will be soon available" class="comment-box" />
-		  <button class="minor-btn">Send</button>
-		</div>
-	  </div>
-	`;
-
-    const container = document.getElementById("container");
-    container.appendChild(commentUI);
+    return commentUI;
 }
 
-function commentWrapper() {
-    const currentPosRot = getCurrentPosRot();
-    const comment = getElementById('comment');
-    let commentText = comment.value;
-}
+
 
 export function createShortcutsUI() {
     const shortcutsUI = document.createElement('div');
@@ -516,9 +594,12 @@ export function createExitUI() {
     exitUI.addEventListener('mousedown', (e) => e.stopPropagation());
     exitUI.addEventListener('click', (e) => e.stopPropagation());
 
-    // Create button with initial state
+    // Create both buttons
     exitUI.innerHTML = `
-        <button class="exit-button" id="exitButton">Show</button>
+        <div class="exit-buttons">
+            <button class="exit-button show-button" id="showButton">Show</button>
+            <button class="exit-button exit-button-red" id="exitButton">Exit</button>
+        </div>
     `;
 
     const exitStyles = `
@@ -536,18 +617,34 @@ export function createExitUI() {
             transform: translateX(0);
         }
 
+        .exit-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
         .exit-button {
-            background-color: rgba(255, 75, 75, 0.9);
-            color: white;
             border: none;
             padding: 10px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.2s ease;
+            color: white;
         }
 
-        .exit-button:hover {
+        .show-button {
+            background-color: rgba(128, 128, 128, 0.9);
+        }
+
+        .show-button:hover {
+            background-color: rgba(108, 108, 108, 0.9);
+        }
+
+        .exit-button-red {
+            background-color: rgba(255, 75, 75, 0.9);
+        }
+
+        .exit-button-red:hover {
             background-color: rgba(255, 45, 45, 0.9);
         }
     `;
@@ -559,24 +656,24 @@ export function createExitUI() {
         document.head.appendChild(styleElement);
     }
 
+    const showButton = exitUI.querySelector('#showButton');
     const exitButton = exitUI.querySelector('#exitButton');
     
-    // Handle button click based on current state
-    exitButton.addEventListener('click', () => {
-        const isLocked = document.pointerLockElement !== null;
-        if (isLocked) {
-            // If in pointer lock (hidden state), exit pointer lock
+    // Handle show button - only quits pointer lock
+    showButton.addEventListener('click', () => {
+        if (document.pointerLockElement) {
             document.exitPointerLock();
-        } else {
-            // If not in pointer lock (visible state), exit to home
-            window.location.href = '/';
         }
     });
 
-    // Update button text based on pointer lock state
+    // Handle exit button - returns to home
+    exitButton.addEventListener('click', () => {
+        window.location.href = '/';
+    });
+
+    // Update visibility based on pointer lock state
     document.addEventListener('pointerlockchange', () => {
         const isLocked = document.pointerLockElement !== null;
-        exitButton.textContent = isLocked ? 'Show' : 'Exit';
         exitUI.classList.toggle('ui-visible', !isLocked);
     });
 
@@ -776,7 +873,7 @@ export function createActionUI() {
         document.dispatchEvent(jumpEvent);
     });
 
-    // Handle pointer lock visibility
+    // Hitting ESC / Tapping "Show" => pointerlockchange => ui-visible
     document.addEventListener('pointerlockchange', () => {
         const isLocked = document.pointerLockElement !== null;
         actionUI.classList.toggle('ui-visible', !isLocked);

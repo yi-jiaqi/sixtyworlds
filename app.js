@@ -3,8 +3,11 @@ const express = require('express');
 const session = require('express-session');
 const { Issuer, generators } = require('openid-client');
 const app = express();
+const bodyParser = require('body-parser');
+const db = require('./db');
 app.use(express.text({ type: 'text/*' }));  // Ensure that it handles any text content, including CSV
 app.use(express.json());
+app.use(bodyParser.json());
 const path = require('path');
 const cors = require('cors');//Jiaqis-MacBook-Pro.local
 app.use(cors({
@@ -69,7 +72,12 @@ initializeClient().catch(console.error);
 app.use(session({
     secret: 'some secret',
     resave: false,
-    saveUninitialized: false
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -872,3 +880,89 @@ app.get('/get-csv-data', (req, res) => {
    #####
 Comment with a point
 */
+
+// GET /api/comments
+app.get('/api/comments', (req, res) => {
+    const { postId, limit = 15 } = req.query;
+    
+    try {
+        console.log('Fetching comments for postId:', postId);
+        
+        // Simplified query without users join
+        const stmt = db.prepare(`
+            SELECT * FROM comments 
+            WHERE postId = ? 
+            ORDER BY createdAt DESC 
+            LIMIT ?
+        `);
+        
+        const comments = stmt.all(postId, limit);
+        console.log('Found comments:', comments);
+        
+        res.json(comments.map(c => ({
+            ...c,
+            positionArray: c.positionArray ? JSON.parse(c.positionArray) : []
+        })));
+    } catch (error) {
+        console.error('Database error:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch comments',
+            details: error.message 
+        });
+    }
+});
+
+// POST /api/comments
+app.post('/api/comments', (req, res) => {
+    console.log('Session info:', req.session);
+    
+    if (!req.session.userInfo) {
+        console.log('Unauthorized: No session info');
+        return res.status(401).json({ error: 'You must be logged in to comment' });
+    }
+
+    const { postId, content, positionArray } = req.body;
+    const userId = req.session.userInfo.sub;
+
+    try {
+        console.log('Inserting comment:', { postId, userId, content });
+        
+        const stmt = db.prepare(`
+            INSERT INTO comments (postId, userId, content, positionArray)
+            VALUES (?, ?, ?, ?)
+        `);
+        
+        const result = stmt.run(postId, userId, content, positionArray);
+        console.log('Insert result:', result);
+        
+        res.status(201).json({ 
+            message: 'Comment created successfully',
+            commentId: result.lastInsertRowid 
+        });
+    } catch (error) {
+        console.error('Database error:', error);
+        res.status(500).json({ 
+            error: 'Failed to create comment',
+            details: error.message 
+        });
+    }
+});
+
+// DELETE /api/comments/:id
+app.delete('/api/comments/:id', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    try {
+        const stmt = db.prepare(`
+            DELETE FROM comments 
+            WHERE id = ? AND userId = ?
+        `);
+        const result = stmt.run(req.params.id, req.session.userInfo.sub);
+        res.sendStatus(result.changes ? 204 : 403);
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ error: 'Failed to delete comment' });
+    }
+});

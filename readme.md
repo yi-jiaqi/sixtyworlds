@@ -21,6 +21,12 @@ Don't miss it if you are also a *GAME DESIGNER* or an *ARCHITECT*!
 - Fantastic worlds! Upload your model in .glb or .gltf format (under construction)
 
 **Future plans:**
-- Promised features in **Jan**
-- Get more models in **Feb...**
 - Tell me what you feel!
+
+**Just completed:**
+- Mobile! phones and tablets.
+- Uploads!
+
+
+**Todo right now:**
+- Add "Scene" components! (03/31)
