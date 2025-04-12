@@ -141,10 +141,9 @@ app.get('/callback', async (req, res) => {
         const params = client.callbackParams(req);
         // console.log('[Callback] Parsed OAuth params:', params);
 
-        const currentHost = req.get('host');
-        const protocol = req.protocol;
-        const redirectUri = `${protocol}://${currentHost}/callback`;
-        // console.log('[Callback] Using redirect URI:', redirectUri);
+        const redirectUri = `${currentConfig.protocol}://${currentConfig.domain}/callback`;
+   
+        console.log('[Callback] Using redirect URI:', redirectUri);
 
         if (!req.session?.nonce || !req.session?.state) {
             throw new Error('Missing session data');
@@ -226,9 +225,8 @@ app.get('/login', async (req, res) => {
     const state = generators.state();
     
     // Determine environment and set protocol accordingly
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const redirectUri = `${protocol}://${host}/callback`;
+    const redirectUri = `${currentConfig.protocol}://${currentConfig.domain}/callback`;
+   
     
     console.log('[Login] Using redirect URI:', redirectUri);
     console.log('[Login] Client config:', {
