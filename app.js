@@ -1,3 +1,23 @@
+// Add at the top with other constants
+const CONFIG = {
+    development: {
+        port: 3001,
+        baseUrl: 'http://localhost:3001',
+        protocol: 'http',
+        domain: 'localhost:3001'
+    },
+    production: {
+        port: 3001,
+        baseUrl: 'https://sixtyworlds.com',
+        protocol: 'https',
+        domain: 'sixtyworlds.com'
+    }
+};
+
+const ENV = process.env.NODE_ENV || 'development';
+const currentConfig = CONFIG[ENV];
+
+
 const BASE_URL = 'https://sixtyworlds.com';
 const express = require('express');
 const session = require('express-session');
@@ -290,12 +310,9 @@ app.get('/logout', (req, res) => {
 
 
 // app.set('view engine', 'ejs');
-const PORT = 3001;
-app.listen(PORT, () => {
+app.listen(currentConfig.port, () => {
     const serverStartTime = new Date().toISOString();
-    const serverUrl = `http://localhost:${PORT}`;
     
-    // Create ASCII art banner
     console.log(`
     ╔════════════════════════════════════════╗
     ║          SIXTY WORLDS SERVER           ║
@@ -304,10 +321,9 @@ app.listen(PORT, () => {
     🚀 Server Status
     ----------------
     Time     : ${serverStartTime}
-    Port     : ${PORT}
-    Local    : ${serverUrl}
-    Host     : ${process.env.NODE_ENV === 'production' ? 'sixtyworlds.com' : 'localhost'}
-    Mode     : ${process.env.NODE_ENV || 'development'}
+    Port     : ${currentConfig.port}
+    URL      : ${currentConfig.baseUrl}
+    Mode     : ${ENV}
     
     📡 API Endpoints Ready
     ---------------------
