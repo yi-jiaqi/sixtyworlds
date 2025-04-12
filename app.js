@@ -192,39 +192,54 @@ async function handleAuthorRegistration(userInfo) {
     });
 }
 
-// Update the login route with logging
-app.get('/login', (req, res) => {
+// Update the login route with better error handling
+app.get('/login', async (req, res) => {
     console.log('[Login] Starting login process');
+    
+    // Check if client is initialized
+    if (!client) {
+        console.error('[Login] OpenID Client not initialized');
+        return res.status(500).send('Authentication service not ready');
+    }
+
     const nonce = generators.nonce();
     const state = generators.state();
     
     // Determine environment and set protocol accordingly
-    const isProduction = process.env.NODE_ENV === 'production';
-    const protocol = isProduction ? 'https' : 'http';
-    const host = isProduction ? 'sixtyworlds.com' : 'localhost:3001';
+    const protocol = req.protocol;
+    const host = req.get('host');
     const redirectUri = `${protocol}://${host}/callback`;
     
     console.log('[Login] Using redirect URI:', redirectUri);
+    console.log('[Login] Client config:', {
+        redirectUris: client.metadata.redirect_uris,
+        clientId: client.metadata.client_id
+    });
 
-    // Verify the redirect URI is in allowed list
-    if (!client.redirectUris.includes(redirectUri)) {
+    // Check redirect URI against allowed URIs
+    if (!client.metadata.redirect_uris?.includes(redirectUri)) {
         console.error('[Login] Invalid redirect URI:', redirectUri);
-        console.error('[Login] Allowed URIs:', client.redirectUris);
+        console.error('[Login] Allowed URIs:', client.metadata.redirect_uris);
         return res.status(400).send('Invalid redirect URI configuration');
     }
 
     req.session.nonce = nonce;
     req.session.state = state;
 
-    const authUrl = client.authorizationUrl({
-        scope: 'phone openid email profile',
-        state: state,
-        nonce: nonce,
-        redirect_uri: redirectUri
-    });
+    try {
+        const authUrl = client.authorizationUrl({
+            scope: 'phone openid email profile',
+            state: state,
+            nonce: nonce,
+            redirect_uri: redirectUri
+        });
 
-    console.log('[Login] Redirecting to Cognito:', authUrl);
-    res.redirect(authUrl);
+        console.log('[Login] Redirecting to Cognito:', authUrl);
+        res.redirect(authUrl);
+    } catch (error) {
+        console.error('[Login] Error generating auth URL:', error);
+        res.status(500).send('Error during authentication');
+    }
 });
 
 // Helper function to get the path from the URL. Example: "http://localhost/hello" returns "/hello"
@@ -277,7 +292,31 @@ app.get('/logout', (req, res) => {
 // app.set('view engine', 'ejs');
 const PORT = 3001;
 app.listen(PORT, () => {
- // console.log(`Server running on http://localhost:${PORT}`);
+    const serverStartTime = new Date().toISOString();
+    const serverUrl = `http://localhost:${PORT}`;
+    
+    // Create ASCII art banner
+    console.log(`
+    ╔════════════════════════════════════════╗
+    ║          SIXTY WORLDS SERVER           ║
+    ╚════════════════════════════════════════╝
+    
+    🚀 Server Status
+    ----------------
+    Time     : ${serverStartTime}
+    Port     : ${PORT}
+    Local    : ${serverUrl}
+    Host     : ${process.env.NODE_ENV === 'production' ? 'sixtyworlds.com' : 'localhost'}
+    Mode     : ${process.env.NODE_ENV || 'development'}
+    
+    📡 API Endpoints Ready
+    ---------------------
+    - Auth   : /login, /callback, /logout
+    - Data   : /api/comments, /api/getPreviews
+    - Models : /api/getModel, /api/uploadWorld
+    
+    ⚡ Server is running and ready for connections
+    `);
 });
 
 /*
