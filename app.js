@@ -203,7 +203,6 @@ app.get('/login', (req, res) => {
     const protocol = req.protocol;
     const redirectUri = `${protocol}://${currentHost}/callback`;
     
-    // console.log('[Login] Generated state:', { nonce, state });
     // console.log('[Login] Redirect URI:', redirectUri);
 
     req.session.nonce = nonce;
@@ -216,7 +215,7 @@ app.get('/login', (req, res) => {
         redirect_uri: redirectUri
     });
 
-    // console.log('[Login] Redirecting to Cognito:', authUrl);
+    console.log('[Login] Redirecting to Cognito:', authUrl);
     res.redirect(authUrl);
 });
 
