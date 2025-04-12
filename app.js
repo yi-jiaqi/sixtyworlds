@@ -52,22 +52,25 @@ AWS Cognito
 let client;
 // Initialize OpenID Client
 async function initializeClient() {
-    // console.log("initializeClient: https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ArF7gdgij")
     const issuer = await Issuer.discover('https://cognito-idp.us-east-2.amazonaws.com/us-east-2_ArF7gdgij');
     client = new issuer.Client({
         client_id: 'igqvrbfgkacjbh81g2a7vfse4',
         client_secret: '1pcu8m1c24euu2nakqe68ofvv5aama9fmqbl6ksukt5euloeng6b',
-        redirect_uris: [destination_login],
+        redirect_uris: [
+            'http://localhost:3001/callback',
+            'https://sixtyworlds.com/callback'
+        ],
         response_types: ['code']
     });
 }
 
 initializeClient().catch(console.error);
 
-// app.use((req, res, next) => {
-//     console.log(`Request received for: ${req.url}`);
-//     next();
-// });
+// Add logging middleware at the top of your routes
+app.use((req, res, next) => {
+ // console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 
 app.use(session({
     secret: 'some secret',
@@ -105,75 +108,103 @@ app.get('/api/user-state', (req, res) => {
     });
 });
 
+// Update the callback route with more detailed logging
 app.get('/callback', async (req, res) => {
-    console.log('[Validation]');
+    // console.log('\n[Callback] Starting authentication...');
+    // console.log('[Callback] Query parameters:', req.query);
+    // console.log('[Callback] Session state:', {
+    //     nonce: req.session?.nonce,
+    //     state: req.session?.state
+    // });
+
     try {
-        // Extract the authorization code and state from the query parameters
         const params = client.callbackParams(req);
+        // console.log('[Callback] Parsed OAuth params:', params);
 
-        // Exchange the code for tokens
-        const tokenSet = await client.callback(
-            destination_login, // Must match the redirect URI in Cognito settings
-            params,
-            {
-                nonce: req.session.nonce, // Validate nonce
-                state: req.session.state, // Validate state
-            }
-        );
+        const currentHost = req.get('host');
+        const protocol = req.protocol;
+        const redirectUri = `${protocol}://${currentHost}/callback`;
+        // console.log('[Callback] Using redirect URI:', redirectUri);
 
-        // Fetch user information using the Access Token
-        const userInfo = await client.userinfo(tokenSet.access_token);
-        req.session.userInfo = userInfo; // Save user info in session
-        // console.log(userInfo)
-        const nickname = userInfo.nickname || "No nickname provided";
-        const author_uid = userInfo.sub;
-
-        req.session.isAuthenticated = true;
-
-        try {
-            let stream;
-            let isUIDFound = false;
-            let isNicknameCorrect = false;
-            stream = fs.createReadStream(csvFilePath_Authors).pipe(csv());
-            stream
-                .on('data', (data) => {
-                    if (data.UID == author_uid) {
-                        isUIDFound = true
-                        isNicknameCorrect = data.author_name == nickname
-                        console.log("UID found: " + author_uid)
-                        console.log("Nickname: " + nickname)
-                        if (!isNicknameCorrect) console.log("[Error] Nickname was: " + data.author_name)
-                    }
-                })
-                .on('end', async () => {
-                    if (!isUIDFound) {
-                        const newRow = `\n${nickname},${author_uid}`;
-                        fs.appendFileSync(csvFilePath_Authors, newRow, "utf8");
-                        console.log("UID NOT found, registering: " + author_uid)
-                        console.log("Nickname: " + nickname)
-                    }
-                })
-                .on('error', (error) => {
-                    console.error('Error reading CSV file:', error);
-                    res.status(500).json({ error: 'Error reading CSV file' });
-                });
-        } catch (error) {
-            console.error('Error processing request:', error);
-            res.status(500).json({ error: 'Error processing request' });
+        if (!req.session?.nonce || !req.session?.state) {
+            throw new Error('Missing session data');
         }
 
-        // Redirect to the homepage or another route
+        const tokenSet = await client.callback(
+            redirectUri,
+            params,
+            {
+                nonce: req.session.nonce,
+                state: req.session.state
+            }
+        );
+        // console.log('[Callback] Received token set');
+
+        const userInfo = await client.userinfo(tokenSet.access_token);
+        // console.log('[Callback] Received user info:', userInfo.sub);
+
+        req.session.userInfo = userInfo;
+        req.session.isAuthenticated = true;
+
+        // console.log('[Callback] Authentication successful, redirecting to home');
         res.redirect('/');
     } catch (err) {
-        console.error('Error handling callback:', err);
-        res.redirect('/error'); // Redirect to an error page or display a message
+        console.error('[Callback] Authentication error:', {
+            name: err.name,
+            message: err.message,
+            stack: err.stack
+        });
+        res.redirect('/?error=' + encodeURIComponent(err.message));
     }
 });
 
+// Add helper function for author registration
+async function handleAuthorRegistration(userInfo) {
+    const nickname = userInfo.nickname || "No nickname provided";
+    const author_uid = userInfo.sub;
+
+    return new Promise((resolve, reject) => {
+        let stream = fs.createReadStream(csvFilePath_Authors).pipe(csv());
+        let isUIDFound = false;
+
+        stream
+            .on('data', (data) => {
+                if (data.UID === author_uid) {
+                    isUIDFound = true;
+                    // console.log("[Author] UID found:", author_uid);
+                }
+            })
+            .on('end', async () => {
+                if (!isUIDFound) {
+                    try {
+                        const newRow = `\n${nickname},${author_uid}`;
+                        await fs.promises.appendFile(csvFilePath_Authors, newRow, "utf8");
+                        // console.log("[Author] Registered new author:", author_uid);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                } else {
+                    resolve();
+                }
+            })
+            .on('error', reject);
+    });
+}
+
+// Update the login route with logging
 app.get('/login', (req, res) => {
-    // console.log("login")
+    // console.log('[Login] Starting login process...');
     const nonce = generators.nonce();
     const state = generators.state();
+    
+    // Get the current URL for the redirect
+    const currentHost = req.get('host');
+    const protocol = req.protocol;
+    const redirectUri = `${protocol}://${currentHost}/callback`;
+    
+    // console.log('[Login] Generated state:', { nonce, state });
+    // console.log('[Login] Redirect URI:', redirectUri);
 
     req.session.nonce = nonce;
     req.session.state = state;
@@ -182,8 +213,10 @@ app.get('/login', (req, res) => {
         scope: 'phone openid email profile',
         state: state,
         nonce: nonce,
+        redirect_uri: redirectUri
     });
 
+    // console.log('[Login] Redirecting to Cognito:', authUrl);
     res.redirect(authUrl);
 });
 
@@ -237,7 +270,7 @@ app.get('/logout', (req, res) => {
 // app.set('view engine', 'ejs');
 const PORT = 3001;
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+ // console.log(`Server running on http://localhost:${PORT}`);
 });
 
 /*
@@ -258,9 +291,9 @@ app.get('/api/getPreviews', async (req, res) => {
     const sort = req.query.sort || 'time'; // sort can be 'time' / 'likes' / 'author' / 'search'
     const word = req.query.word; // If sort is 'author', word is the UID
     if (sort == "author") {
-        console.log("get previews with UID: " + word)
+     // console.log("get previews with UID: " + word)
     } else {
-        console.log("get previews by: " + sort)
+     // console.log("get previews by: " + sort)
     }
 
     // Verify the CSV file exists
@@ -299,7 +332,7 @@ app.get('/api/getPreviews', async (req, res) => {
             })
             .on('end', async () => {
                 if (results.length === 0) {
-                    console.log('End of the Worlds: No more data to load');
+                 // console.log('End of the Worlds: No more data to load');
                     return res.json([{ isEnd: true }]);
                 }
 
@@ -342,7 +375,7 @@ app.get('/api/getPreviews', async (req, res) => {
 
 
 async function filterByAuthorUID(author_UID) {
-    console.log("trying to filter: " + author_UID)
+ // console.log("trying to filter: " + author_UID)
     const passThrough = new PassThrough({ objectMode: true });
 
     fs.createReadStream(csvFilePath_Worlds)
@@ -353,7 +386,7 @@ async function filterByAuthorUID(author_UID) {
                 passThrough.write(data); // Write matching rows to the stream
             } else {
 
-                console.log(data.author_uid)
+             // console.log(data.author_uid)
             }
         })
         .on("end", () => {
@@ -385,6 +418,7 @@ const getAuthorName = async (uid) => {
             .on('data', (data) => {
                 if (data.UID === uid) {
                     resolve(data.author_name); // Resolve with the author_name if UID is found
+                    // console.log("Found author name: " + data.author_name)
                 } else {
                     results.push(data); // Continue accumulating data for error checking
                 }
@@ -397,9 +431,9 @@ const getAuthorName = async (uid) => {
 };
 app.post('/api/updateAuthor', (req, res) => {
     const { displayName, userId } = req.body;
-    // const csvFilePath_Authors = path.join(__dirname, 'authors.csv');
-    console.log("displayName: " + displayName)
-    console.log("userId: " + userId)
+
+ // console.log("displayName: " + displayName)
+ // console.log("userId: " + userId)
 
     // Read and parse the CSV file
     const authors = [];
@@ -433,7 +467,7 @@ app.post('/api/updateAuthor', (req, res) => {
                     console.error("Error updating CSV file:", err);
                     res.status(500).send({ error: "Failed to update the CSV file." });
                 } else {
-                    console.log("CSV file updated successfully.");
+                 // console.log("CSV file updated successfully.");
                     res.status(200).send({ success: true });
                 }
             });
@@ -459,10 +493,10 @@ app.get('/api/getAuthorName/:uid', async (req, res) => {
 });
 app.get('/api/getAuthorUID/:serial', async (req, res) => {
     const serial = req.params.serial;
-    console.log("Trying to get author UID by serial: " + serial)
+ // console.log("Trying to get author UID by serial: " + serial)
     getItembySerial(serial)
         .then(async (data) => {
-            console.log("Resolved project:", data.model_name);
+         // console.log("Resolved project:", data.model_name);
 
             const authorName = await getAuthorName(data.author_uid)
             data.author_name = authorName
@@ -479,7 +513,7 @@ app.get('/api/getAuthorUID/:serial', async (req, res) => {
 });
 
 function getItembySerial(lineNumber) {
-    console.log("getItembySerial: " + lineNumber)
+ // console.log("getItembySerial: " + lineNumber)
     return new Promise((resolve, reject) => {
         let currentLine = 0; // Track the current line
         const targetLine = Number(lineNumber) + 2; // Calculate the target line
@@ -530,7 +564,7 @@ Endpoint - getModel
 
 app.get('/api/getModel/:serial', async (req, res) => {
     const modelSerial = req.params.serial; // Serial to find
-    console.log("Trying to get the model by serial: " + modelSerial);
+ // console.log("Trying to get the model by serial: " + modelSerial);
 
     // Verify the CSV file exists
     if (!fs.existsSync(csvFilePath_Worlds)) {
@@ -556,7 +590,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
                         // console.log("Successfully generated " + model_url);
 
                         const authorName = await getAuthorName(data.author_uid)
-                        console.log(data)
+                     // console.log(data)
                         data.author_name = authorName
                         data.model_url = model_url;
                         if (!isResponded) {
@@ -574,7 +608,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
             })
             .on('end', () => {
                 if (!isResponded) {
-                    console.log('Item not found with the provided serial');
+                 // console.log('Item not found with the provided serial');
                     res.status(404).json({ error: 'Item not found' });
                 }
             })
@@ -844,7 +878,7 @@ app.post('/save-camera-data', (req, res) => {
     const filePath = path.join(__dirname, 'path', `camera_data_${formattedDate}.csv`);
 
     // Log the path for saving the CSV file
-    console.log('Saving CSV file to:', filePath);
+ // console.log('Saving CSV file to:', filePath);
 
     // Write the CSV data to a file
     fs.writeFile(filePath, csvData, (err) => {
@@ -852,7 +886,7 @@ app.post('/save-camera-data', (req, res) => {
             console.error('Error saving CSV file:', err);
             return res.status(500).send('Failed to save data');
         }
-        console.log('CSV file saved successfully');
+     // console.log('CSV file saved successfully');
         res.status(200).send('Data saved');
     });
 });
@@ -882,13 +916,10 @@ Comment with a point
 */
 
 // GET /api/comments
-app.get('/api/comments', (req, res) => {
+app.get('/api/comments', async (req, res) => {
     const { postId, limit = 15 } = req.query;
     
     try {
-        console.log('Fetching comments for postId:', postId);
-        
-        // Simplified query without users join
         const stmt = db.prepare(`
             SELECT * FROM comments 
             WHERE postId = ? 
@@ -897,12 +928,32 @@ app.get('/api/comments', (req, res) => {
         `);
         
         const comments = stmt.all(postId, limit);
-        console.log('Found comments:', comments);
         
-        res.json(comments.map(c => ({
-            ...c,
-            positionArray: c.positionArray ? JSON.parse(c.positionArray) : []
-        })));
+        // Map through comments and add username for each
+        const commentsWithUsernames = await Promise.all(comments.map(async (comment) => {
+            try {
+                const username = await getAuthorName(comment.userId);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: " + username)
+                return {
+                    ...comment,
+                    username,
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            } catch (error) {
+                // If username not found, use 'Anonymous'
+                console.log("Error fetching username:", error);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: Anonymous")
+                return {
+                    ...comment,
+                    username: 'Anonymous',
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            }
+        }));
+
+        res.json(commentsWithUsernames);
     } catch (error) {
         console.error('Database error:', error);
         res.status(500).json({ 
@@ -914,10 +965,10 @@ app.get('/api/comments', (req, res) => {
 
 // POST /api/comments
 app.post('/api/comments', (req, res) => {
-    console.log('Session info:', req.session);
+ // console.log('Session info:', req.session);
     
     if (!req.session.userInfo) {
-        console.log('Unauthorized: No session info');
+     // console.log('Unauthorized: No session info');
         return res.status(401).json({ error: 'You must be logged in to comment' });
     }
 
@@ -925,7 +976,7 @@ app.post('/api/comments', (req, res) => {
     const userId = req.session.userInfo.sub;
 
     try {
-        console.log('Inserting comment:', { postId, userId, content });
+     // console.log('Inserting comment:', { postId, userId, content });
         
         const stmt = db.prepare(`
             INSERT INTO comments (postId, userId, content, positionArray)
@@ -933,7 +984,7 @@ app.post('/api/comments', (req, res) => {
         `);
         
         const result = stmt.run(postId, userId, content, positionArray);
-        console.log('Insert result:', result);
+     // console.log('Insert result:', result);
         
         res.status(201).json({ 
             message: 'Comment created successfully',

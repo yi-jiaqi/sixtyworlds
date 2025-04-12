@@ -1,6 +1,6 @@
 import { toggleMoveMode, toggleLighting, getCurrentPosRot } from './load.js';
 import { uploadWorld } from './upload.js';
-import { fetchUserState } from './script.js';
+import { fetchUserState, getAuthorNameByUID } from './script.js';
 
 // Add at the top of the file, outside any function
 let isUploaded = false;  // Module-level state
@@ -330,20 +330,21 @@ export function createCommentUI(model_Object) {
             const response = await fetch(`/api/comments?postId=${model_Object.serial}`);
             console.log("Response: ", response);
             if (!response.ok) throw new Error('Failed to fetch comments');
-            
+
             const comments = await response.json();
             const commentsContainer = commentUI.querySelector('.comments');
             const inputBox = commentsContainer.querySelector('.comment-input');
-            
+
             // Clear existing comments
             commentsContainer.innerHTML = '';
-            
+
             // Add comments in reverse chronological order
             comments.forEach(comment => {
                 const commentElement = document.createElement('div');
+
                 commentElement.className = 'comment-item';
                 commentElement.innerHTML = `
-                    <span class="username">${comment.userId}:</span>
+                    <span class="comment-name">${comment.username}:</span>
                     <span class="comment-content">${comment.content}</span>
                     <div class="comment-meta">
                         <span class="comment-date">${new Date(comment.createdAt).toLocaleString()}</span>
@@ -351,7 +352,7 @@ export function createCommentUI(model_Object) {
                 `;
                 commentsContainer.appendChild(commentElement);
             });
-            
+
             // Re-add the input box at the bottom
             commentsContainer.appendChild(inputBox);
         } catch (error) {
@@ -363,6 +364,21 @@ export function createCommentUI(model_Object) {
     function makeCommentWrapper() {
         const commentBox = commentUI.querySelector('#comment-box');
         const sendButton = commentUI.querySelector('#send-comment');
+        // Add event listeners to prevent control triggers
+        commentBox.addEventListener('keydown', (e) => {
+            e.stopPropagation(); // Prevent keydown from reaching the document
+        });
+
+        commentBox.addEventListener('keyup', (e) => {
+            e.stopPropagation(); // Prevent keyup from reaching the document
+        });
+
+        // Exit pointer lock when focusing on comment box
+        commentBox.addEventListener('focus', () => {
+            if (document.pointerLockElement) {
+                document.exitPointerLock();
+            }
+        });
 
         sendButton.addEventListener('click', async () => {
             const commentText = commentBox.value.trim();
@@ -371,14 +387,14 @@ export function createCommentUI(model_Object) {
             try {
                 // Check authentication first
                 const { isAuthenticated, userInfo } = await fetchUserState();
-                
+
                 if (!isAuthenticated) {
                     showMessage('Please sign in to comment');
                     return;
                 }
 
                 const positionArray = getCurrentPosRot();
-                
+
                 const response = await fetch('/api/comments', {
                     method: 'POST',
                     headers: {
@@ -526,7 +542,7 @@ export function createShortcutsUI() {
     return shortcutsUI;
 }
 
-export 	function showMessage(text) {
+export function showMessage(text) {
     const container = document.querySelector('.notification-container');
     const hint = document.createElement('div');
     hint.className = 'pointer-hint';
@@ -658,7 +674,7 @@ export function createExitUI() {
 
     const showButton = exitUI.querySelector('#showButton');
     const exitButton = exitUI.querySelector('#exitButton');
-    
+
     // Handle show button - only quits pointer lock
     showButton.addEventListener('click', () => {
         if (document.pointerLockElement) {
@@ -883,10 +899,10 @@ export function createActionUI() {
 }
 
 
-function createScenesUI(){
+function createScenesUI() {
 
 }
 
-function addSceneCapsule(){
-    
+function addSceneCapsule() {
+
 }

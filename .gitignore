@@ -1,3 +1,6 @@
 
 .env
+authors.csv
+worlds.csv
+comments.db
 node_modules
