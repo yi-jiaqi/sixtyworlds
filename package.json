@@ -4,7 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "start": "cross-env PORT=3001 node app.js"
+    "start": "cross-env NODE_ENV=dev PORT=3001 node app.js",
+    "start:pro": "cross-env NODE_ENV=pro PORT=3001 node app.js"
   },
   "author": "",
   "license": "ISC",
