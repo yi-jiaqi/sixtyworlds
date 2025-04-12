@@ -194,20 +194,24 @@ async function handleAuthorRegistration(userInfo) {
 
 // Update the login route with logging
 app.get('/login', (req, res) => {
-    // console.log('[Login] Starting login process...');
+    console.log('[Login] Starting login process');
     const nonce = generators.nonce();
     const state = generators.state();
     
-    // Get the current URL for the redirect
-    const currentHost = req.get('host');
-    const protocol = req.protocol;
-    let redirectUri = `${protocol}://${currentHost}/callback`;
-    if (currentHost === 'sixtyworlds.com') {
-        console.log('[Login] Using production redirect URI for https://sixtyworlds.com');
-        redirectUri = 'https://sixtyworlds.com/callback';
-    }
+    // Determine environment and set protocol accordingly
+    const isProduction = process.env.NODE_ENV === 'production';
+    const protocol = isProduction ? 'https' : 'http';
+    const host = isProduction ? 'sixtyworlds.com' : 'localhost:3001';
+    const redirectUri = `${protocol}://${host}/callback`;
     
-    // console.log('[Login] Redirect URI:', redirectUri);
+    console.log('[Login] Using redirect URI:', redirectUri);
+
+    // Verify the redirect URI is in allowed list
+    if (!client.redirectUris.includes(redirectUri)) {
+        console.error('[Login] Invalid redirect URI:', redirectUri);
+        console.error('[Login] Allowed URIs:', client.redirectUris);
+        return res.status(400).send('Invalid redirect URI configuration');
+    }
 
     req.session.nonce = nonce;
     req.session.state = state;
