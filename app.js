@@ -1,12 +1,12 @@
-// Add at the top with other constants
+// Add at the top of app.js
 const CONFIG = {
-    development: {
+    dev: {  // matches NODE_ENV=dev from package.json
         port: 3001,
         baseUrl: 'http://localhost:3001',
         protocol: 'http',
         domain: 'localhost:3001'
     },
-    production: {
+    pro: {  // matches NODE_ENV=pro from package.json
         port: 3001,
         baseUrl: 'https://sixtyworlds.com',
         protocol: 'https',
@@ -14,8 +14,10 @@ const CONFIG = {
     }
 };
 
-const ENV = process.env.NODE_ENV || 'development';
-const currentConfig = CONFIG[ENV];
+// Add fallback for environment and config
+const ENV = process.env.NODE_ENV || 'dev';
+const currentConfig = CONFIG[ENV] || CONFIG.dev;
+
 
 
 const BASE_URL = 'https://sixtyworlds.com';
