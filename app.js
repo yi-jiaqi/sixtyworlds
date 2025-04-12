@@ -418,6 +418,7 @@ const getAuthorName = async (uid) => {
             .on('data', (data) => {
                 if (data.UID === uid) {
                     resolve(data.author_name); // Resolve with the author_name if UID is found
+                    // console.log("Found author name: " + data.author_name)
                 } else {
                     results.push(data); // Continue accumulating data for error checking
                 }
@@ -430,7 +431,7 @@ const getAuthorName = async (uid) => {
 };
 app.post('/api/updateAuthor', (req, res) => {
     const { displayName, userId } = req.body;
-    // const csvFilePath_Authors = path.join(__dirname, 'authors.csv');
+
  // console.log("displayName: " + displayName)
  // console.log("userId: " + userId)
 
@@ -915,13 +916,10 @@ Comment with a point
 */
 
 // GET /api/comments
-app.get('/api/comments', (req, res) => {
+app.get('/api/comments', async (req, res) => {
     const { postId, limit = 15 } = req.query;
     
     try {
-     // console.log('Fetching comments for postId:', postId);
-        
-        // Simplified query without users join
         const stmt = db.prepare(`
             SELECT * FROM comments 
             WHERE postId = ? 
@@ -930,12 +928,32 @@ app.get('/api/comments', (req, res) => {
         `);
         
         const comments = stmt.all(postId, limit);
-     // console.log('Found comments:', comments);
         
-        res.json(comments.map(c => ({
-            ...c,
-            positionArray: c.positionArray ? JSON.parse(c.positionArray) : []
-        })));
+        // Map through comments and add username for each
+        const commentsWithUsernames = await Promise.all(comments.map(async (comment) => {
+            try {
+                const username = await getAuthorName(comment.userId);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: " + username)
+                return {
+                    ...comment,
+                    username,
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            } catch (error) {
+                // If username not found, use 'Anonymous'
+                console.log("Error fetching username:", error);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: Anonymous")
+                return {
+                    ...comment,
+                    username: 'Anonymous',
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            }
+        }));
+
+        res.json(commentsWithUsernames);
     } catch (error) {
         console.error('Database error:', error);
         res.status(500).json({ 

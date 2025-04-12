@@ -322,10 +322,33 @@ export async function fetchUserState() {
 }
 
 
+export async function getAuthorNameByUID(uid) {
+    try {
+        const response = await fetch(`/api/getAuthorName/${uid}`);
+        // console.log(response);
+        if (response.ok) {
+            const data = await response.json();
+            return data;
+        } else {
+            console.log(`Author not found for serial ${serial}, using temp author`);
+            return {
+                author_uid: 'temp',
+                author_name: 'ERROR'
+            };
+        }
+    } catch (error) {
+        console.warn(`Error fetching author info: ${error.message}`);
+        return {
+            author_uid: 'temp',
+            author_name: 'ERROR'
+        };
+    }
+}
+
 export async function getAuthorInfoBySerial(serial) {
     try {
         const response = await fetch(`/api/getAuthorUID/${serial}`);
-        console.log(response);
+        // console.log(response);
         if (response.ok) {
             const data = await response.json();
             return data;
