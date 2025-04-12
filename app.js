@@ -201,7 +201,11 @@ app.get('/login', (req, res) => {
     // Get the current URL for the redirect
     const currentHost = req.get('host');
     const protocol = req.protocol;
-    const redirectUri = `${protocol}://${currentHost}/callback`;
+    let redirectUri = `${protocol}://${currentHost}/callback`;
+    if (currentHost === 'sixtyworlds.com') {
+        console.log('[Login] Using production redirect URI for https://sixtyworlds.com');
+        redirectUri = 'https://sixtyworlds.com/callback';
+    }
     
     // console.log('[Login] Redirect URI:', redirectUri);
 
