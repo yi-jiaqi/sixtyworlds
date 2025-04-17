@@ -612,7 +612,7 @@ export function isMobileDevice() {
 
 function toggleVisibilityActiveness(force = null) {
     const isMobile = isMobileDevice();
-    
+
     if (force !== null) {
         visiActive = force;
     } else if (isMobile) {
@@ -855,14 +855,123 @@ export function createActionUI() {
     return actionUI;
 }
 
+/* 
+Scenes UI
+    1. Class Scene;
+    2. CreateSceneKey;
+    3. Scenes UI;
+*/
+export class Scene {
+    constructor(data = [0, 0, 0, 0, 0, 0], name = "Original Scene") {
+        this.position = data.slice(0, 3); // First 3 elements are position
+        this.rotation = data.slice(3, 6); // Next 3 elements are rotation
+        this.name = name;
+    }
 
-function createScenesUI() {
-
+    export() {
+        return [...this.position, ...this.rotation];
+    }
 }
 
-function addSceneCapsule() {
+function createSceneKeyElement(scene) {
+    const element = document.createElement('div');
+    element.className = 'scene-key';
+    element.textContent = scene.name;
 
+    element.addEventListener('click', () => {
+        teleport(scene.position, scene.rotation);
+    });
+
+    return element;
 }
+
+//need to make sure if there should be an input for the model;
+export function teleport(position, rotation) {
+    console.log(`Teleporting to position: [${position}] and rotation: [${rotation}]`);
+}
+
+export function createScenesUI(scenesInThisWorld = []) {
+    const scenesUI = document.createElement('div');
+    scenesUI.className = 'floating-ui scenes-ui ui-visible';
+
+    // Prevent event propagation
+    scenesUI.addEventListener('mousedown', (e) => e.stopPropagation());
+    scenesUI.addEventListener('click', (e) => e.stopPropagation());
+
+    // Create base structure
+    scenesUI.innerHTML = `
+        <h4>Scenes</h4>
+        <div class="scenes-container"></div>
+    `;
+
+    // Add styles
+    const scenesStyles = `
+        .scenes-ui {
+            left: ${UI_POSITIONS.scene.hidden};
+            bottom: ${UI_POSITIONS.scene.bottom};
+            transform: translateX(-50%);
+        }
+
+        .scenes-ui.ui-visible {
+            left: ${UI_POSITIONS.scene.visible};
+        }
+
+        .scenes-container {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+        }
+
+        .scene-key {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.2s;
+        }
+
+        .scene-key:hover {
+            background: rgba(240, 240, 240, 0.9);
+        }
+    `;
+
+    if (!document.querySelector('#scenes-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'scenes-styles';
+        styleElement.textContent = scenesStyles;
+        document.head.appendChild(styleElement);
+    }
+
+    const scenesContainer = scenesUI.querySelector('.scenes-container');
+
+    // If no scenes, create default scene
+    if (!scenesInThisWorld || scenesInThisWorld.length === 0) {
+        const defaultScene = new Scene();
+        scenesContainer.appendChild(createSceneKeyElement(defaultScene));
+    } else {
+        // Create scene keys for each scene
+        scenesInThisWorld.forEach(scene => {
+            scenesContainer.appendChild(createSceneKeyElement(scene));
+        });
+    }
+
+    // Add to container
+    const container = document.getElementById('container');
+    container.appendChild(scenesUI);
+
+    // Handle visibility toggling
+    document.addEventListener('pointerlockchange', () => {
+        const isLocked = document.pointerLockElement !== null;
+        scenesUI.classList.toggle('ui-visible', !isLocked);
+    });
+
+    return scenesUI;
+}
+
 
 
 /*
@@ -884,7 +993,7 @@ export function createGuideUI() {
     guideImage.style.height = isMobile ? '300px' : '200px';
     guideImage.style.width = 'auto';
     guideImage.style.objectFit = 'contain';
-    
+
     guideUI.appendChild(guideImage);
 
     // Add styles
