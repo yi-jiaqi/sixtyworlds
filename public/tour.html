@@ -39,7 +39,7 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI, createJoystickUI, createActionUI, showMessage } from './ui.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI, createJoystickUI, createActionUI, showMessage,createGuideUI } from './ui.js';
 		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
 		import { uploadWorld } from './upload.js';
@@ -226,6 +226,7 @@
 					createExitUI()
 					createJoystickUI()
 					createActionUI()
+					createGuideUI()
 
 
 				} else {
@@ -263,6 +264,7 @@
 								createExitUI()
 								createJoystickUI()
 								createActionUI()
+								createGuideUI()
 							} else {
 								console.log("[Validated] The user is Not the authur")
 								createConfigUI(modelObject, false, authorUID)
@@ -272,6 +274,7 @@
 							}
 							createCommentUI(modelObject)
 							createShortcutsUI()
+							createGuideUI()
 							checkUIExistence()
 						})
 					}

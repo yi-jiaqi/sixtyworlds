@@ -1,70 +1,91 @@
 import { toggleMoveMode, toggleLighting, getCurrentPosRot } from './load.js';
 import { uploadWorld } from './upload.js';
 import { fetchUserState, getAuthorNameByUID } from './script.js';
+let isUploaded = false;
+let visiActive = true; // Global visibility state
 
-// Add at the top of the file, outside any function
-let isUploaded = false;  // Module-level state
-
-// Add at the top of file
+/* 
+UI_POSITIONS
+    Positions for different UI elements;
+    Starting status for each UI element;
+    Dynamically appllied.
+*/
 const UI_POSITIONS = {
+    /*
+    1. hidden: Off-screen position
+        If have 'mobile'&'desktop', it is actually not 'hidden' in pointer-lock mode by isMobileDevice();
+        If doesn't have 'mobile'&'desktop', it means it's only in mobile, or only in desktop;
+
+    2. visible: On-screen position
+
+
+    3. when have 'top', it is calculated from the top, vice versa.
+        top: Top position
+        bottom: Bottom position
+        left: Left position
+        right: Right position
+    */
     config: { hidden: '-500px', visible: '20px', top: '60px' },
+    // config is both in desktop and mobile;
+
     comment: { hidden: '-500px', visible: '20px', top: '65px' },
-    shortcuts: { hidden: '-500px', visible: '20px', bottom: '20px' },  // Add bottom position
+    // comment is both in desktop and mobile;
+
+    shortcuts: { hidden: '-500px', visible: '20px', bottom: '20px' },
+    // shortcuts is ONLY IN DESKTOP;
+
     exit: {
         hidden: {
             mobile: '50%', // Center position for mobile
-            desktop: '-150px' // Off-screen for desktop
+            desktop: '-250px' // Off-screen for desktop
         },
         visible: '20px',
         bottom: '20px'
     },
+    // exit is both in desktop and mobile;
+
     joystick: {
         hidden: {
+            mobile: '20%',
+            desktop: '-150px'
+        },
+        visible: {
             mobile: '50px',
             desktop: '-150px'
         },
-        visible: '50px',
-        bottom: '50px'
+        bottom: '10%'
     },
+    // joystick is ONLY IN MOBILE;
+
     action: {
         hidden: {
-            mobile: '20px',
+            mobile: '20%',
             desktop: '-150px'
         },
-        visible: '20px',
-        bottom: '50px',
-        right: '50px'  // Position on right side, opposite to joystick
-    }
-};
+        visible: {
+            mobile: '50px',
+            desktop: '-150px'
+        },
+        bottom: '10%',
+    },
+    // action is ONLY IN MOBILE;
 
-// Add styles
+    guide: {
+        hidden: '-500px',
+        visible: '50%',
+        top: '50%'
+    },
+    // guide is both in desktop and mobile;
+
+    scene: {
+        hidden: '-500px',
+        visible: '50%',
+        bottom: '10%'
+    }
+    // scene is both in desktop and mobile;
+};
 const uiStyle = document.createElement('style');
 uiStyle.textContent = `
-    .floating-ui {
-        position: fixed;
-        transition: all 0.3s ease-out;
-        background: rgba(248, 249, 250, 0.95);
-        padding: 13px;
-        gap: 10px;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        max-width: 400px;
-        user-select: none;          /* Prevent text selection */
-        -webkit-user-select: none;  /* Safari specific */
-        -webkit-touch-callout: none; /* iOS Safari */
-        -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
-        touch-action: none;         /* Prevent default touch actions */
-        pointer-events: auto;       /* Ensure UI elements still receive events */
-    }
-
-    /* Allow pointer events on specific interactive elements */
-    .floating-ui button,
-    .floating-ui input,
-    .floating-ui .clickable {
-        pointer-events: auto;
-        touch-action: manipulation; /* Optimize touch behavior */
-    }
-
     .config-ui {
         left: ${UI_POSITIONS.config.hidden};
         top: ${UI_POSITIONS.config.top};
@@ -73,6 +94,11 @@ uiStyle.textContent = `
     .comment-ui {
         right: ${UI_POSITIONS.comment.hidden};
         top: ${UI_POSITIONS.config.top};
+    }
+
+    .shortcuts-ui {
+        left: ${UI_POSITIONS.comment.hidden};
+        bottom: ${UI_POSITIONS.shortcuts.bottom};
     }
 
     .ui-visible.config-ui {
@@ -87,20 +113,16 @@ uiStyle.textContent = `
         right: ${UI_POSITIONS.comment.visible};
     }
 
-    .shortcuts-ui {
-        position: fixed;
-        left: ${UI_POSITIONS.comment.hidden};
-        bottom: ${UI_POSITIONS.shortcuts.bottom}; /* Position above comment UI */
-        transition: left 0.3s ease-out;
-        gap: 10px;
-        border-radius: 8px;
-    }
+
 
 
 `;
 document.head.appendChild(uiStyle);
 
-// Function to show the loading gear
+
+/* 
+LOADING GEAR
+*/
 export function showLoadingGear() {
     const gear = document.createElement('div');
     gear.id = 'loadingGear';
@@ -131,8 +153,6 @@ export function showLoadingGear() {
     document.body.appendChild(gear);
     document.body.appendChild(progressText);
 }
-
-// Function to hide the rotating gear
 export function hideLoadingGear() {
     console.log("Trying to hide loading gear");
     const gear = document.getElementById('loadingGear');
@@ -145,8 +165,6 @@ export function hideLoadingGear() {
     // Show the pointer hint after loading gear is hidden
     if (hint) hint.classList.add('visible');
 }
-
-// Function to update the loading progression
 export function updateLoadingGear(progression) {
     const progressText = document.getElementById('loadingProgress');
     if (progressText) {
@@ -155,22 +173,29 @@ export function updateLoadingGear(progression) {
         progressText.innerText = `${displayProgress}%`;
     }
 }
-// CSS animation for the rotating gear
-const style = document.createElement('style');
-style.textContent = `
-	@keyframes spin {
-	  0% { transform: rotate(0deg); }
-	  100% { transform: rotate(360deg); }
-	}
-  `;
-document.head.appendChild(style);
+
+
+/*
+ALL UI ELEMENTS:
+    ConfigUI - title
+    CommentUI
+    ShortcutsUI
+    ExitUI - show
+    JoystickUI
+    ActionUI - jump
+    GuideUI (TBD)
+    ScenesUI (TBD)
+*/
 
 
 
+/* 
+ConfigUI 
+    Title, Author, Keywords;
+    Hidden in mobile;
+    Editable in edit mode;
+*/
 export function createConfigUI(model_Object, editMode = false, author_UID = "", blobUrl = "") {
-    /*
-    This is a temporaty Winter Show adaptation
-    */
 
     // Parse keywords string into an array
     let keywordsArray = [];
@@ -186,10 +211,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
 
     const configUI = document.createElement("div");
     configUI.className = "floating-ui config-ui ui-visible";
-
-    // Add these styles to prioritize the UI
-    configUI.style.zIndex = "1000"; // High z-index to stay on top
-    configUI.style.pointerEvents = "auto"; // Ensures UI catches events first
 
     // Add event listeners to prevent canvas from capturing UI events
     configUI.addEventListener('mousedown', (e) => e.stopPropagation());
@@ -238,7 +259,6 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
     const container = document.getElementById("container");
     container.appendChild(configUI);
 
-    let uploaded = false;
     if (editMode) {
         console.log("Edit Mode, adding upload")
         const uploadButton = document.getElementById("upload");
@@ -260,7 +280,7 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
                 authorName: authorNameInput.value || authorNameInput.placeholder || "Anonymous",
                 keywords: keywordsInput.value || keywordsInput.placeholder || "none"
             };
-            console.log("formData", formData);
+            // console.log("formData", formData);
 
             isUploaded = true;  // Set before upload to prevent race conditions
             uploadButton.disabled = true;  // Visual feedback
@@ -287,7 +307,9 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
 
 
 
-
+/* 
+UI Updates for home.html
+*/
 export function updateMyWorldsButton(isAuthenticated, userInfo) {
     const myWorldsButton = document.getElementById('myWorldsButton');
 
@@ -305,7 +327,11 @@ export const dynamicMargin = () => {
     return viewportHeight / -5 // Adjust for smaller screens
 };
 
-
+/* 
+CommentUI
+    Comments, Likes[TBD], and Share[TBD];
+    Hidden in mobile;
+*/
 export function createCommentUI(model_Object) {
     const commentUI = document.createElement("div");
     commentUI.className = "floating-ui comment-ui ui-visible";
@@ -315,16 +341,17 @@ export function createCommentUI(model_Object) {
 
     // Initial HTML structure
     commentUI.innerHTML = `
-        <h4 style="margin: 0 0 10px 0;">Comments</h4>
-        <div class="comments" style="gap:12px">
-            <div class="comment-input">
-                <input type="text" id="comment-box" placeholder="Add a comment..." class="comment-box" />
-                <button class="minor-btn" id="send-comment">Send</button>
-            </div>
-        </div>
-    `;
+    <h4 style="margin: 0 0 10px 0;">Comments</h4>
+    <div class="comments" style="gap:12px">
+        <!-- Comments will be dynamically added here -->
+    </div>
+    <div class="comment-input">
+        <input type="text" id="comment-box" placeholder="Add a comment..." class="comment-box" />
+        <button class="minor-btn" id="send-comment">Send</button>
+    </div>
+`;
 
-    // Add function to load and display comments
+    // Add function to load and show comments
     async function loadComments() {
         try {
             const response = await fetch(`/api/comments?postId=${model_Object.serial}`);
@@ -441,7 +468,9 @@ export function createCommentUI(model_Object) {
 }
 
 
-
+/* 
+ShortcutsUI (sometimes "ShortcutUI")
+*/
 export function createShortcutsUI() {
     const shortcutsUI = document.createElement('div');
     shortcutsUI.className = 'floating-ui shortcuts-ui ui-visible';
@@ -503,29 +532,6 @@ export function createShortcutsUI() {
         </div>
     `;
 
-    // const flyWalkButton = document.getElementById("fly-walk");
-    // const dayNightButton = document.getElementById("day-night");
-
-    // flyWalkButton.addEventListener("click", () => {
-    //     const mode = toggleMoveMode();
-    //     flyWalkButton.textContent = mode.charAt(0).toUpperCase() + mode.slice(1); // Capitalize first letter
-    // });
-
-    // dayNightButton.addEventListener("click", () => {
-    //     const mode = toggleLighting();
-    //     switch (mode) {
-    //         case 'HIGH':
-    //             dayNightButton.textContent = 'Bright';
-    //             break;
-    //         case 'STANDARD':
-    //             dayNightButton.textContent = 'Normal';
-    //             break;
-    //         case 'DARK':
-    //             dayNightButton.textContent = 'Dark';
-    //             break;
-    //     }
-    // });
-
     // Get container and append shortcutsUI
     const container = document.getElementById('container');
     container.appendChild(shortcutsUI);
@@ -542,6 +548,9 @@ export function createShortcutsUI() {
     return shortcutsUI;
 }
 
+/*
+Show temp messages at the bottom-right side;
+*/
 export function showMessage(text) {
     const container = document.querySelector('.notification-container');
     const hint = document.createElement('div');
@@ -559,7 +568,9 @@ export function showMessage(text) {
     }, 3060);
 }
 
-
+/*
+Helper functions
+*/
 export function checkUIExistence() {
     // Update selectors to match multiple classes
     const configUI = document.querySelector('.floating-ui.config-ui');
@@ -594,14 +605,32 @@ export function checkUIExistence() {
     }
     console.groupEnd();
 }
-
-// Add mobile detection function
 export function isMobileDevice() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
         || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
 }
 
-// Add exit UI creation function
+function toggleVisibilityActiveness(force = null) {
+    const isMobile = isMobileDevice();
+    
+    if (force !== null) {
+        visiActive = force;
+    } else if (isMobile) {
+        visiActive = !visiActive; // Toggle for mobile
+    } else {
+        visiActive = !document.pointerLockElement; // Based on pointer lock for desktop
+    }
+
+    // Update all UI elements
+    document.querySelectorAll('.floating-ui').forEach(ui => {
+        ui.classList.toggle('ui-visible', visiActive);
+    });
+}
+
+/* 
+ExitUI
+    have the "show" button when isMobileDevice();
+*/
 export function createExitUI() {
     const exitUI = document.createElement('div');
     exitUI.className = 'floating-ui exit-ui';
@@ -620,48 +649,14 @@ export function createExitUI() {
 
     const exitStyles = `
         .exit-ui {
-            position: fixed;
             right: ${isMobile ? UI_POSITIONS.exit.hidden.mobile : UI_POSITIONS.exit.hidden.desktop};
             bottom: ${UI_POSITIONS.exit.bottom};
-            transition: all 0.3s ease-out;
-            z-index: 1000;
             ${isMobile ? 'transform: translateX(50%);' : ''} 
         }
 
         .exit-ui.ui-visible {
             right: ${UI_POSITIONS.exit.visible};
             transform: translateX(0);
-        }
-
-        .exit-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .exit-button {
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s ease;
-            color: white;
-        }
-
-        .show-button {
-            background-color: rgba(128, 128, 128, 0.9);
-        }
-
-        .show-button:hover {
-            background-color: rgba(108, 108, 108, 0.9);
-        }
-
-        .exit-button-red {
-            background-color: rgba(255, 75, 75, 0.9);
-        }
-
-        .exit-button-red:hover {
-            background-color: rgba(255, 45, 45, 0.9);
         }
     `;
 
@@ -677,7 +672,9 @@ export function createExitUI() {
 
     // Handle show button - only quits pointer lock
     showButton.addEventListener('click', () => {
-        if (document.pointerLockElement) {
+        if (isMobileDevice()) {
+            toggleVisibilityActiveness();
+        } else if (document.pointerLockElement) {
             document.exitPointerLock();
         }
     });
@@ -699,6 +696,9 @@ export function createExitUI() {
     return exitUI;
 }
 
+/* 
+JoystickUI
+*/
 export function createJoystickUI() {
     const isMobile = isMobileDevice();
     if (!isMobile) return null; // Only create joystick for mobile devices
@@ -709,25 +709,8 @@ export function createJoystickUI() {
 
     const joystickStyles = `
         .joystick-ui {
-            position: fixed;
             left: ${UI_POSITIONS.joystick.hidden.mobile};
             bottom: ${UI_POSITIONS.joystick.bottom};
-            width: 150px;
-            height: 150px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 50%;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
-            opacity: 0.5;
-            touch-action: none;
-        }
-
-        .joystick-ui.ui-visible {
-            opacity: 1;
-        }
-
-        .joystick-ui:active {
-            opacity: 0.8;
         }
     `;
 
@@ -815,7 +798,9 @@ export function createJoystickUI() {
     return joystickUI;
 }
 
-// Add new function for action UI
+/* 
+ActionUI
+*/
 export function createActionUI() {
     const isMobile = isMobileDevice();
     if (!isMobile) return null; // Only create action UI for mobile devices
@@ -826,36 +811,8 @@ export function createActionUI() {
 
     const actionStyles = `
         .action-ui {
-            position: fixed;
             right: ${UI_POSITIONS.action.hidden.mobile};
             bottom: ${UI_POSITIONS.action.bottom};
-            width: 80px;
-            height: 80px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            z-index: 1000;
-            transition: opacity 0.3s ease;
-            opacity: 0.5;
-            touch-action: none;
-        }
-
-        .action-ui.ui-visible {
-            opacity: 0.6;
-        }
-
-        .jump-button {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-
-        .jump-button:active {
-            background: rgba(255, 255, 255, 0.5);
-            transform: scale(0.95);
         }
     `;
 
@@ -905,4 +862,70 @@ function createScenesUI() {
 
 function addSceneCapsule() {
 
+}
+
+
+/*
+Guide UI
+    Simplest one: just one image; Scalable.
+*/
+export function createGuideUI() {
+    const guideUI = document.createElement('div');
+    guideUI.className = 'floating-ui guide-ui ui-visible';
+    const isMobile = isMobileDevice();
+
+    // Prevent event propagation
+    guideUI.addEventListener('mousedown', (e) => e.stopPropagation());
+    guideUI.addEventListener('click', (e) => e.stopPropagation());
+
+    // Create image element
+    const guideImage = document.createElement('img');
+    guideImage.src = isMobile ? '/static/guide_mobile.jpeg' : '/static/guide_desktop.jpeg';
+    guideImage.style.height = isMobile ? '300px' : '200px';
+    guideImage.style.width = 'auto';
+    guideImage.style.objectFit = 'contain';
+    
+    guideUI.appendChild(guideImage);
+
+    // Add styles
+    const guideStyles = `
+        .guide-ui {
+            left: ${UI_POSITIONS.guide.hidden};
+            top: ${UI_POSITIONS.guide.top};
+        }
+
+        .guide-ui.ui-visible {
+            left: ${UI_POSITIONS.guide.visible};
+        }
+
+        .guide-ui img {
+            height: ${isMobile ? '300px' : '200px'};
+        }
+    `;
+
+    if (!document.querySelector('#guide-styles')) {
+        const styleElement = document.createElement('style');
+        styleElement.id = 'guide-styles';
+        styleElement.textContent = guideStyles;
+        document.head.appendChild(styleElement);
+    }
+
+    // Add to container
+    const container = document.getElementById('container');
+    container.appendChild(guideUI);
+
+    // Handle visibility toggling
+    document.addEventListener('pointerlockchange', () => {
+        if (!isMobile) {
+            const isLocked = document.pointerLockElement !== null;
+            guideUI.classList.toggle('ui-visible', !isLocked);
+        }
+    });
+
+    // Update visibility based on visiActive state
+    document.addEventListener('visibilityChange', () => {
+        guideUI.classList.toggle('ui-visible', visiActive);
+    });
+
+    return guideUI;
 }

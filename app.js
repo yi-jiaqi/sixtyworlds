@@ -995,8 +995,8 @@ app.get('/api/comments', async (req, res) => {
         const commentsWithUsernames = await Promise.all(comments.map(async (comment) => {
             try {
                 const username = await getAuthorName(comment.userId);
-                console.log("comment.userId: " + comment.userId)
-                console.log("username: " + username)
+                // console.log("comment.userId: " + comment.userId)
+                // console.log("username: " + username)
                 return {
                     ...comment,
                     username,
@@ -1005,8 +1005,8 @@ app.get('/api/comments', async (req, res) => {
             } catch (error) {
                 // If username not found, use 'Anonymous'
                 console.log("Error fetching username:", error);
-                console.log("comment.userId: " + comment.userId)
-                console.log("username: Anonymous")
+                // console.log("comment.userId: " + comment.userId)
+                // console.log("username: Anonymous")
                 return {
                     ...comment,
                     username: 'Anonymous',
