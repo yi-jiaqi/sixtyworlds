@@ -860,6 +860,15 @@ Scenes UI
     1. Class Scene;
     2. CreateSceneKey;
     3. Scenes UI;
+
+
+TBD:
+    Questions:
+    1. How to add a scene? (configUI => Edit Mode / Make a comment)
+    2. How to delete a scene?
+    3. How to teleport to a scene? (reference to load.js)
+    4. Databases for the scenes? How to imitiate the scenesInThisWorld?
+    5. Adding the scene in the commentUI?
 */
 export class Scene {
     constructor(data = [0, 0, 0, 0, 0, 0], name = "Original Scene") {
@@ -870,6 +879,17 @@ export class Scene {
 
     export() {
         return [...this.position, ...this.rotation];
+    }
+
+    async save() {
+        const response = await addSceneToServer(this);
+        this.serial = response.serial; // Store the DB-assigned ID
+        return response;
+    }
+
+    async delete() {
+        if (!this.serial) throw new Error("Scene has no serial ID");
+        await deleteSceneOnServer(this.serial);
     }
 }
 
@@ -916,27 +936,7 @@ export function createScenesUI(scenesInThisWorld = []) {
             left: ${UI_POSITIONS.scene.visible};
         }
 
-        .scenes-container {
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            overflow-x: auto;
-            padding: 10px 0;
-        }
 
-        .scene-key {
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: background-color 0.2s;
-        }
-
-        .scene-key:hover {
-            background: rgba(240, 240, 240, 0.9);
-        }
     `;
 
     if (!document.querySelector('#scenes-styles')) {

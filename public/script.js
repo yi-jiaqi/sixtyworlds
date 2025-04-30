@@ -376,8 +376,52 @@ export async function getAuthorInfoBySerial(serial) {
 	##
    ##
   ##
-Comment, like...interaction outside of tour
+
+  APIs!  Comment, like...interaction outside of tour
 */
+
+export async function loadAllScenes() {
+	const response = await fetch('/api/scenes');
+	const scenes = await response.json();
+	
+	scenes.forEach(sceneData => {
+	  const scene = new Scene(
+		[...sceneData.position, ...sceneData.rotation],
+		sceneData.name
+	  );
+	  scene.serial = sceneData.serial; // Store DB ID
+	  scene.commentId = sceneData.commentId; // Link to comment
+	  
+	  if (scene.commentId) {
+		attachSceneToComment(scene); // Your UI logic
+	  } else {
+		addToScenePool(scene); // Add to standalone scenes UI
+	  }
+	});
+  }
+
+  export async function addSceneToServer(scene) {
+	const response = await fetch('/api/scenes', {
+	  method: 'POST',
+	  headers: { 'Content-Type': 'application/json' },
+	  body: JSON.stringify({
+		sequence: 1, // Default or calculate dynamically
+		commentId: scene.commentId || null, // Optional association
+		position: scene.position,
+		rotation: scene.rotation,
+		name: scene.name
+	  })
+	});
+	if (!response.ok) throw new Error("Failed to save scene");
+	return await response.json(); // Returns { serial: 123 }
+  }
+  
+  export async function deleteSceneOnServer(serial) {
+	const response = await fetch(`/api/scenes/${serial}`, {
+	  method: 'DELETE'
+	});
+	if (!response.ok) throw new Error("Failed to delete scene");
+  }
 
 /*
    #####

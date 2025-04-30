@@ -1,4 +1,12 @@
-// Add at the top of app.js
+/*
+Configuration: 
+    pro(production) / dev(development)
+    # Development
+    pm2 start ecosystem.config.js --env dev
+
+    # Production
+    pm2 start ecosystem.config.js --env pro
+*/
 const CONFIG = {
     dev: {  // matches NODE_ENV=dev from package.json
         port: 3001,
@@ -14,7 +22,7 @@ const CONFIG = {
     }
 };
 
-// Add fallback for environment and config
+// fallback for environment and config
 const ENV = process.env.NODE_ENV || 'dev';
 const currentConfig = CONFIG[ENV] || CONFIG.dev;
 
