@@ -34,7 +34,16 @@ const session = require('express-session');
 const { Issuer, generators } = require('openid-client');
 const app = express();
 const bodyParser = require('body-parser');
-const db = require('./db');
+const { db,
+    addScene,
+    getScenesByCommentId,
+    getScenesByProjectSerial,
+    deleteScene,
+    rearrangeScenes,
+    renameScene,
+    getCommentsBySerial,
+    addComment,
+    deleteComment, } = require('../db');
 app.use(express.text({ type: 'text/*' }));  // Ensure that it handles any text content, including CSV
 app.use(express.json());
 app.use(bodyParser.json());
@@ -43,7 +52,7 @@ const cors = require('cors');//Jiaqis-MacBook-Pro.local
 app.use(cors({
     origin: ['http://localhost:3001', 'http://jiaqis-macbook-pro.local:3001'],
     credentials: true,
-  }));
+}));
 const csv = require('csv-parser');
 const fs = require('fs');
 const { PassThrough } = require("stream");
@@ -98,7 +107,7 @@ initializeClient().catch(console.error);
 
 // Add logging middleware at the top of your routes
 app.use((req, res, next) => {
- // console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    // console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
@@ -152,7 +161,7 @@ app.get('/callback', async (req, res) => {
         // console.log('[Callback] Parsed OAuth params:', params);
 
         const redirectUri = `${currentConfig.protocol}://${currentConfig.domain}/callback`;
-   
+
         console.log('[Callback] Using redirect URI:', redirectUri);
 
         if (!req.session?.nonce || !req.session?.state) {
@@ -224,7 +233,7 @@ async function handleAuthorRegistration(userInfo) {
 // Update the login route with better error handling
 app.get('/login', async (req, res) => {
     console.log('[Login] Starting login process');
-    
+
     // Check if client is initialized
     if (!client) {
         console.error('[Login] OpenID Client not initialized');
@@ -233,11 +242,11 @@ app.get('/login', async (req, res) => {
 
     const nonce = generators.nonce();
     const state = generators.state();
-    
+
     // Determine environment and set protocol accordingly
     const redirectUri = `${currentConfig.protocol}://${currentConfig.domain}/callback`;
-   
-    
+
+
     console.log('[Login] Using redirect URI:', redirectUri);
     console.log('[Login] Client config:', {
         redirectUris: client.metadata.redirect_uris,
@@ -320,7 +329,7 @@ app.get('/logout', (req, res) => {
 // app.set('view engine', 'ejs');
 app.listen(currentConfig.port, () => {
     const serverStartTime = new Date().toISOString();
-    
+
     console.log(`
     ╔════════════════════════════════════════╗
     ║          SIXTY WORLDS SERVER           ║
@@ -347,10 +356,10 @@ app.listen(currentConfig.port, () => {
    #####
   ##   ##
        ##
-      ##
-    ##
-   ##
-  #########
+    ####
+       ##
+  ##   ##
+   #####
 Endpoint - getPreviews
 */
 
@@ -361,9 +370,9 @@ app.get('/api/getPreviews', async (req, res) => {
     const sort = req.query.sort || 'time'; // sort can be 'time' / 'likes' / 'author' / 'search'
     const word = req.query.word; // If sort is 'author', word is the UID
     if (sort == "author") {
-     // console.log("get previews with UID: " + word)
+        // console.log("get previews with UID: " + word)
     } else {
-     // console.log("get previews by: " + sort)
+        // console.log("get previews by: " + sort)
     }
 
     // Verify the CSV file exists
@@ -402,7 +411,7 @@ app.get('/api/getPreviews', async (req, res) => {
             })
             .on('end', async () => {
                 if (results.length === 0) {
-                 // console.log('End of the Worlds: No more data to load');
+                    // console.log('End of the Worlds: No more data to load');
                     return res.json([{ isEnd: true }]);
                 }
 
@@ -445,7 +454,7 @@ app.get('/api/getPreviews', async (req, res) => {
 
 
 async function filterByAuthorUID(author_UID) {
- // console.log("trying to filter: " + author_UID)
+    // console.log("trying to filter: " + author_UID)
     const passThrough = new PassThrough({ objectMode: true });
 
     fs.createReadStream(csvFilePath_Worlds)
@@ -456,7 +465,7 @@ async function filterByAuthorUID(author_UID) {
                 passThrough.write(data); // Write matching rows to the stream
             } else {
 
-             // console.log(data.author_uid)
+                // console.log(data.author_uid)
             }
         })
         .on("end", () => {
@@ -502,8 +511,8 @@ const getAuthorName = async (uid) => {
 app.post('/api/updateAuthor', (req, res) => {
     const { displayName, userId } = req.body;
 
- // console.log("displayName: " + displayName)
- // console.log("userId: " + userId)
+    // console.log("displayName: " + displayName)
+    // console.log("userId: " + userId)
 
     // Read and parse the CSV file
     const authors = [];
@@ -537,7 +546,7 @@ app.post('/api/updateAuthor', (req, res) => {
                     console.error("Error updating CSV file:", err);
                     res.status(500).send({ error: "Failed to update the CSV file." });
                 } else {
-                 // console.log("CSV file updated successfully.");
+                    // console.log("CSV file updated successfully.");
                     res.status(200).send({ success: true });
                 }
             });
@@ -563,10 +572,10 @@ app.get('/api/getAuthorName/:uid', async (req, res) => {
 });
 app.get('/api/getAuthorUID/:serial', async (req, res) => {
     const serial = req.params.serial;
- // console.log("Trying to get author UID by serial: " + serial)
+    // console.log("Trying to get author UID by serial: " + serial)
     getItembySerial(serial)
         .then(async (data) => {
-         // console.log("Resolved project:", data.model_name);
+            // console.log("Resolved project:", data.model_name);
 
             const authorName = await getAuthorName(data.author_uid)
             data.author_name = authorName
@@ -583,7 +592,7 @@ app.get('/api/getAuthorUID/:serial', async (req, res) => {
 });
 
 function getItembySerial(lineNumber) {
- // console.log("getItembySerial: " + lineNumber)
+    // console.log("getItembySerial: " + lineNumber)
     return new Promise((resolve, reject) => {
         let currentLine = 0; // Track the current line
         const targetLine = Number(lineNumber) + 2; // Calculate the target line
@@ -634,7 +643,7 @@ Endpoint - getModel
 
 app.get('/api/getModel/:serial', async (req, res) => {
     const modelSerial = req.params.serial; // Serial to find
- // console.log("Trying to get the model by serial: " + modelSerial);
+    // console.log("Trying to get the model by serial: " + modelSerial);
 
     // Verify the CSV file exists
     if (!fs.existsSync(csvFilePath_Worlds)) {
@@ -660,7 +669,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
                         // console.log("Successfully generated " + model_url);
 
                         const authorName = await getAuthorName(data.author_uid)
-                     // console.log(data)
+                        // console.log(data)
                         data.author_name = authorName
                         data.model_url = model_url;
                         if (!isResponded) {
@@ -678,7 +687,7 @@ app.get('/api/getModel/:serial', async (req, res) => {
             })
             .on('end', () => {
                 if (!isResponded) {
-                 // console.log('Item not found with the provided serial');
+                    // console.log('Item not found with the provided serial');
                     res.status(404).json({ error: 'Item not found' });
                 }
             })
@@ -921,9 +930,9 @@ app.post('/api/uploadWorld', async (req, res) => {
    #####
   ##   ##
   ##   ##
-   #####
-  ##   ##
-  ##   ##
+   ######
+       ##
+      ##
    #####
 Save & Give Trace data
 */
@@ -948,7 +957,7 @@ app.post('/save-camera-data', (req, res) => {
     const filePath = path.join(__dirname, 'path', `camera_data_${formattedDate}.csv`);
 
     // Log the path for saving the CSV file
- // console.log('Saving CSV file to:', filePath);
+    // console.log('Saving CSV file to:', filePath);
 
     // Write the CSV data to a file
     fs.writeFile(filePath, csvData, (err) => {
@@ -956,7 +965,7 @@ app.post('/save-camera-data', (req, res) => {
             console.error('Error saving CSV file:', err);
             return res.status(500).send('Failed to save data');
         }
-     // console.log('CSV file saved successfully');
+        // console.log('CSV file saved successfully');
         res.status(200).send('Data saved');
     });
 });
@@ -983,107 +992,255 @@ app.get('/get-csv-data', (req, res) => {
       ##
    #####
 Comment with a point
+API Endpoints of Comments & Scenes (database_related)
 */
 
-// GET /api/comments
+// get comments by serial
 app.get('/api/comments', async (req, res) => {
-    const { postId, limit = 15 } = req.query;
-    
-    try {
-        const stmt = db.prepare(`
-            SELECT * FROM comments 
-            WHERE postId = ? 
-            ORDER BY createdAt DESC 
-            LIMIT ?
-        `);
-        
-        const comments = stmt.all(postId, limit);
-        
-        // Map through comments and add username for each
-        const commentsWithUsernames = await Promise.all(comments.map(async (comment) => {
-            try {
-                const username = await getAuthorName(comment.userId);
-                // console.log("comment.userId: " + comment.userId)
-                // console.log("username: " + username)
-                return {
-                    ...comment,
-                    username,
-                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
-                };
-            } catch (error) {
-                // If username not found, use 'Anonymous'
-                console.log("Error fetching username:", error);
-                // console.log("comment.userId: " + comment.userId)
-                // console.log("username: Anonymous")
-                return {
-                    ...comment,
-                    username: 'Anonymous',
-                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
-                };
-            }
-        }));
+    if (!req.query.serial) {
+        return res.status(400).json({ error: 'Missing serial parameter' });
+    }
 
+    try {
+        const comments = await getCommentsBySerial(req.query.serial);
+        const commentsWithUsernames = await addUsernames(comments);
         res.json(commentsWithUsernames);
     } catch (error) {
-        console.error('Database error:', error);
-        res.status(500).json({ 
-            error: 'Failed to fetch comments',
-            details: error.message 
-        });
+        console.error('Error fetching comments:', error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
     }
 });
 
-// POST /api/comments
+// add comment
 app.post('/api/comments', (req, res) => {
- // console.log('Session info:', req.session);
-    
     if (!req.session.userInfo) {
-     // console.log('Unauthorized: No session info');
-        return res.status(401).json({ error: 'You must be logged in to comment' });
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { postId, content, positionArray } = req.body;
-    const userId = req.session.userInfo.sub;
-
     try {
-     // console.log('Inserting comment:', { postId, userId, content });
-        
-        const stmt = db.prepare(`
-            INSERT INTO comments (postId, userId, content, positionArray)
-            VALUES (?, ?, ?, ?)
-        `);
-        
-        const result = stmt.run(postId, userId, content, positionArray);
-     // console.log('Insert result:', result);
-        
-        res.status(201).json({ 
-            message: 'Comment created successfully',
-            commentId: result.lastInsertRowid 
+        const attachScene = req.body.attachScene === true;
+        let sceneId = null;
+
+        // If attachScene is true, create scene first
+        if (attachScene) {
+            const posArray = JSON.parse(req.body.positionArray);
+            const position = posArray.slice(0, 3);
+            const rotation = posArray.slice(3, 6);
+
+            const sceneResult = addScene(
+                req.body.serial,
+                null, // sequence
+                null, // commentId (will update after comment creation)
+                JSON.stringify(position),
+                JSON.stringify(rotation),
+                `Scene from comment`
+            );
+            sceneId = sceneResult.lastInsertRowid;
+        }
+
+        // Add comment with scene reference if applicable
+        const commentResult = addComment(
+            req.body.serial,
+            req.session.userInfo.sub,
+            req.body.content,
+            req.body.positionArray,
+            attachScene,
+            sceneId
+        );
+
+        // Update scene with comment ID if scene was created
+        if (sceneId) {
+            const stmt = db.prepare(`
+                UPDATE scenes 
+                SET associatedCommentId = ? 
+                WHERE sceneId = ?
+            `);
+            stmt.run(commentResult.lastInsertRowid, sceneId);
+        }
+        res.status(201).json({
+            commentId: commentResult.lastInsertRowid,
+            sceneId: sceneId,
+            message: 'Comment created successfully'
         });
     } catch (error) {
-        console.error('Database error:', error);
-        res.status(500).json({ 
-            error: 'Failed to create comment',
-            details: error.message 
-        });
+        console.error('Error creating comment:', error);
+        res.status(500).json({ error: 'Failed to create comment' });
     }
 });
 
 // DELETE /api/comments/:id
 app.delete('/api/comments/:id', (req, res) => {
     if (!req.session.userInfo) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     try {
-        const stmt = db.prepare(`
-            DELETE FROM comments 
-            WHERE id = ? AND userId = ?
-        `);
-        const result = stmt.run(req.params.id, req.session.userInfo.sub);
+        const result = deleteComment(req.params.id, req.session.userInfo.sub);
+        // Associated scene will be automatically deleted due to ON DELETE CASCADE
         res.sendStatus(result.changes ? 204 : 403);
     } catch (error) {
         console.error('Error deleting comment:', error);
         res.status(500).json({ error: 'Failed to delete comment' });
+    }
+});
+
+
+// Scene Endpoints
+// get scenes by serial
+app.get('/api/scenes', async (req, res) => {
+    if (!req.query.serial) {
+        return res.status(400).json({ error: 'Missing serial parameter' });
+    }
+
+    try {
+        const scenes = getScenesBySerial(req.query.serial);
+        res.json(scenes);
+    } catch (error) {
+        console.error('Error fetching scenes:', error);
+        res.status(500).json({ error: 'Failed to fetch scenes' });
+    }
+});
+
+// add scene
+app.post('/api/scenes', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const {
+            serial,
+            sequence,
+            associatedCommentId,
+            position,
+            rotation,
+            name
+        } = req.body;
+
+        // Validate required fields
+        if (!serial || !position || !rotation) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const result = addScene(
+            serial,
+            sequence || null,
+            associatedCommentId || null,
+            JSON.stringify(position),
+            JSON.stringify(rotation),
+            name || 'Untitled Scene'
+        );
+
+        res.status(201).json({
+            sceneId: result.lastInsertRowid,
+            message: 'Scene created successfully'
+        });
+    } catch (error) {
+        console.error('Error creating scene:', error);
+        res.status(500).json({ error: 'Failed to create scene' });
+    }
+});
+
+// delete scene
+app.delete('/api/scenes/:sceneId', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const result = deleteScene(req.params.sceneId);
+        if (result.changes) {
+            res.sendStatus(204);
+        } else {
+            res.status(404).json({ error: 'Scene not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting scene:', error);
+        res.status(500).json({ error: 'Failed to delete scene' });
+    }
+});
+
+app.patch('/api/scenes/:sceneId', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const updates = req.body;
+        const result = updateScene(req.params.sceneId, updates);
+        
+        if (result === null) {
+            res.status(400).json({ error: 'No valid fields to update' });
+        } else if (result.changes) {
+            res.status(200).json({ message: 'Scene updated successfully' });
+        } else {
+            res.status(404).json({ error: 'Scene not found' });
+        }
+    } catch (error) {
+        console.error('Error updating scene:', error);
+        res.status(500).json({ error: 'Failed to update scene' });
+    }
+});
+
+app.get('/api/scenes/comment/:commentId', (req, res) => {
+    try {
+        const scenes = getScenesByCommentId(req.params.commentId);
+        res.json(scenes);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch scenes' });
+    }
+});
+
+app.get('/api/scenes/project/:serial', (req, res) => {
+    try {
+        const scenes = getScenesByProjectSerial(req.params.serial);
+        res.json(scenes);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch scenes' });
+    }
+});
+
+app.delete('/api/scenes/:serial', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const { sequence, commentId } = req.query;
+        const result = deleteScene(
+            req.params.serial,
+            sequence ? parseInt(sequence) : null,
+            commentId || null
+        );
+        res.sendStatus(result.changes ? 204 : 404);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete scene' });
+    }
+});
+
+app.put('/api/scenes/:serial/rearrange', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        rearrangeScenes(req.params.serial, req.body.sequences);
+        res.sendStatus(200);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to rearrange scenes' });
+    }
+});
+
+app.patch('/api/scenes/:serial/rename', (req, res) => {
+    if (!req.session.userInfo) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const { sequence, newName } = req.body;
+        const result = renameScene(req.params.serial, sequence, newName);
+        res.sendStatus(result.changes ? 200 : 404);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to rename scene' });
     }
 });

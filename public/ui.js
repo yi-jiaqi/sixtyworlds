@@ -1,4 +1,4 @@
-import { toggleMoveMode, toggleLighting, getCurrentPosRot } from './load.js';
+import { updateCameraPosition, getCurrentPosRot } from './load.js';
 import { uploadWorld } from './upload.js';
 import { fetchUserState, getAuthorNameByUID } from './script.js';
 let isUploaded = false;
@@ -119,8 +119,14 @@ uiStyle.textContent = `
 `;
 document.head.appendChild(uiStyle);
 
-
-/* 
+/*
+   ###
+  ####
+ ## ##
+    ##
+    ##
+    ##
+ #########
 LOADING GEAR
 */
 export function showLoadingGear() {
@@ -190,6 +196,13 @@ ALL UI ELEMENTS:
 
 
 /* 
+   #####
+  ##   ##
+       ##
+      ##
+    ##
+   ##
+  #########
 ConfigUI 
     Title, Author, Keywords;
     Hidden in mobile;
@@ -308,6 +321,13 @@ export function createConfigUI(model_Object, editMode = false, author_UID = "", 
 
 
 /* 
+   #####
+  ##   ##
+       ##
+    ####
+       ##
+  ##   ##
+   #####
 UI Updates for home.html
 */
 export function updateMyWorldsButton(isAuthenticated, userInfo) {
@@ -328,6 +348,13 @@ export const dynamicMargin = () => {
 };
 
 /* 
+     ##
+    ###
+   # ##
+  #  ##
+ #######
+     ##
+     ##
 CommentUI
     Comments, Likes[TBD], and Share[TBD];
     Hidden in mobile;
@@ -338,15 +365,24 @@ export function createCommentUI(model_Object) {
 
     commentUI.addEventListener('mousedown', (e) => e.stopPropagation());
     commentUI.addEventListener('click', (e) => e.stopPropagation());
-
+    let attachScene = false;
     // Initial HTML structure
     commentUI.innerHTML = `
     <h4 style="margin: 0 0 10px 0;">Comments</h4>
     <div class="comments" style="gap:12px">
         <!-- Comments will be dynamically added here -->
     </div>
-    <div class="comment-input">
-        <input type="text" id="comment-box" placeholder="Add a comment..." class="comment-box" />
+    <div class="comment-input" style="display: flex; align-items: center; gap: 8px;">
+        <input type="text" id="comment-box" placeholder="Add a comment..." class="comment-box" style="flex-grow: 1;" />
+        
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <label class="scene-attach-toggle" style="display: flex; align-items: center;">
+                <input type="checkbox" id="attach-scene-toggle" ${attachScene ? 'checked' : ''}>
+                <span class="slider round"></span>
+            </label>
+            <span style="font-size: 0.8em; color: #666;">Attach Scene</span>
+        </div>
+        
         <button class="minor-btn" id="send-comment">Send</button>
     </div>
 `;
@@ -354,7 +390,7 @@ export function createCommentUI(model_Object) {
     // Add function to load and show comments
     async function loadComments() {
         try {
-            const response = await fetch(`/api/comments?postId=${model_Object.serial}`);
+            const response = await fetch(`/api/comments?serial=${model_Object.serial}`);
             console.log("Response: ", response);
             if (!response.ok) throw new Error('Failed to fetch comments');
 
@@ -411,6 +447,10 @@ export function createCommentUI(model_Object) {
             const commentText = commentBox.value.trim();
             if (!commentText) return;
 
+            // Get the checkbox state
+            const attachSceneCheckbox = commentUI.querySelector('#attach-scene-toggle');
+            const attachScene = attachSceneCheckbox.checked;
+
             try {
                 // Check authentication first
                 const { isAuthenticated, userInfo } = await fetchUserState();
@@ -428,9 +468,10 @@ export function createCommentUI(model_Object) {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        postId: model_Object.serial,
+                        serial: model_Object.serial,
                         content: commentText,
                         positionArray: JSON.stringify(positionArray),
+                        attachScene: attachScene, // Add this line
                         parentId: null,
                         userId: userInfo.sub,
                         userName: userInfo.nickname || 'Anonymous'
@@ -469,6 +510,14 @@ export function createCommentUI(model_Object) {
 
 
 /* 
+
+  #######
+  ##
+  ##
+  ######
+       ##
+  ##   ##
+   #####
 ShortcutsUI (sometimes "ShortcutUI")
 */
 export function createShortcutsUI() {
@@ -549,7 +598,15 @@ export function createShortcutsUI() {
 }
 
 /*
+   #####
+  ##
+  ##
+  ######
+  ##   ##
+  ##   ##
+   #####
 Show temp messages at the bottom-right side;
+Helper functions
 */
 export function showMessage(text) {
     const container = document.querySelector('.notification-container');
@@ -568,9 +625,7 @@ export function showMessage(text) {
     }, 3060);
 }
 
-/*
-Helper functions
-*/
+
 export function checkUIExistence() {
     // Update selectors to match multiple classes
     const configUI = document.querySelector('.floating-ui.config-ui');
@@ -628,6 +683,13 @@ function toggleVisibilityActiveness(force = null) {
 }
 
 /* 
+  #########
+       ##
+      ##
+     ##
+    ##
+   ##
+  ##
 ExitUI
     have the "show" button when isMobileDevice();
 */
@@ -856,6 +918,13 @@ export function createActionUI() {
 }
 
 /* 
+   #####
+  ##   ##
+  ##   ##
+   #####
+  ##   ##
+  ##   ##
+   #####
 Scenes UI
     1. Class Scene;
     2. CreateSceneKey;
@@ -871,7 +940,7 @@ TBD:
     5. Adding the scene in the commentUI?
 */
 export class Scene {
-    constructor(data = [0, 0, 0, 0, 0, 0], name = "Original Scene") {
+    constructor(data = [0, 1, 0, 0, 0, 0], name = "Original Scene") {
         this.position = data.slice(0, 3); // First 3 elements are position
         this.rotation = data.slice(3, 6); // Next 3 elements are rotation
         this.name = name;
@@ -893,14 +962,29 @@ export class Scene {
     }
 }
 
+
+function createCameraUpdateButton(name, position, rotation) {
+    const button = document.createElement('button');
+    button.className = 'camera-update-btn';
+    button.textContent = name || 'Default Scene';
+
+    button.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('teleportToScene', {
+            detail: { position, rotation }
+        }));
+    });
+
+    return button;
+}
+
+// Modified scene key element
 function createSceneKeyElement(scene) {
     const element = document.createElement('div');
     element.className = 'scene-key';
-    element.textContent = scene.name;
-
-    element.addEventListener('click', () => {
-        teleport(scene.position, scene.rotation);
-    });
+    console.log("Scene Key Element: ", scene.position, scene.rotation);
+    // Add camera update button to each scene key
+    const updateBtn = createCameraUpdateButton(scene.name, scene.position, scene.rotation);
+    element.appendChild(updateBtn);
 
     return element;
 }
@@ -908,6 +992,7 @@ function createSceneKeyElement(scene) {
 //need to make sure if there should be an input for the model;
 export function teleport(position, rotation) {
     console.log(`Teleporting to position: [${position}] and rotation: [${rotation}]`);
+
 }
 
 export function createScenesUI(scenesInThisWorld = []) {
@@ -975,6 +1060,13 @@ export function createScenesUI(scenesInThisWorld = []) {
 
 
 /*
+   #####
+  ##   ##
+  ##   ##
+   ######
+       ##
+      ##
+   #####
 Guide UI
     Simplest one: just one image; Scalable.
 */
