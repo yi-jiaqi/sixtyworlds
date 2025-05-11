@@ -262,27 +262,71 @@ footer {
   position: fixed;
   padding: 20px;
   gap:10px;
-  background-color: rgba(248, 249, 250, 0.95);
+  z-index: 1000;
+  pointer-events: auto;
   border: 1px solid #ddd;
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
   z-index: 1000;
   border-radius: 8px;
 }
 
+.guide-ui {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  translate: -50% -50%;
+  background-color: rgba(255, 255, 255, 1);
+  border: 1px solid #ddd;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  border-radius: 8px;
+}
+.guide-ui img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+}
 
 
-.comments{
-  gap:12px;
+.comments {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 8px; /* Reduced margin */
+    padding-right: 8px;
 }
 
 /* Comment UI specific styling */
 .comment-ui {
-  right: 0;
-  width: 24vw; /* 1/6 of the viewport */
+    display: flex;
+    background: rgba(248, 249, 250, 0.95);
+    flex-direction: column;
+    max-height: 80vh;
+    padding: 16px;
+    overflow: hidden; /* Prevent content from spilling out */
 }
-.shortcuts-ui {
-  right: 0;
-  width: 12vw; /* 1/6 of the viewport */
+
+.comment-input {
+    position: sticky;
+    bottom: 0;
+    padding: 8px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    gap: 8px;
+    /* Remove negative margins */
+    width: 100%; /* Contain within parent */
+    box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.comment-box {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.comment-item {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
 }
 
 /* Additional styles for elements */
@@ -381,13 +425,12 @@ footer {
 }
 
 /* Responsive behavior */
-@media (max-width: 540px) {
+
+
+@media (max-width: 720px) {
   .config-ui {
     display: none;
   }
-}
-
-@media (max-width: 720px) {
   .comment-ui {
     display: none;
   }
@@ -451,10 +494,12 @@ input {
 
 /* General Styles */
 .config-ui {
-  display: flex;
+
+  background: rgba(248, 249, 250, 0.95);
   flex-direction: column;
   gap: 8px; /* Add spacing between elements */
   width: 15vw;
+  min-width: 270px;
   transition: left 0.3s ease-out;
 }
 
@@ -608,4 +653,213 @@ button {
 
 .shortcut-key.clickable:hover {
     background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.floating-ui {
+  position: fixed;
+  transition: all 0.3s ease-out;
+  padding: 13px;
+  gap: 10px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  max-width: 400px;
+  user-select: none;          /* Prevent text selection */
+  -webkit-user-select: none;  /* Safari specific */
+  -webkit-touch-callout: none; /* iOS Safari */
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+  touch-action: none;         /* Prevent default touch actions */
+  pointer-events: auto;       /* Ensure UI elements still receive events */
+}
+
+/* Allow pointer events on specific interactive elements */
+.floating-ui button,
+.floating-ui input,
+.floating-ui .clickable {
+  pointer-events: auto;
+  touch-action: manipulation; /* Optimize touch behavior */
+}
+
+.shortcuts-ui {
+
+  background-color: rgba(255, 255, 255, 0.9);
+  position: fixed;
+  transition: left 0.3s ease-out;
+  gap: 10px;
+  border-radius: 8px;
+}
+
+.exit-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.exit-button {
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+  color: white;
+}
+
+.show-button {
+  background-color: rgba(128, 128, 128, 0.9);
+}
+
+.show-button:hover {
+  background-color: rgba(108, 108, 108, 0.9);
+}
+
+.exit-button-red {
+  background-color: rgba(255, 75, 75, 0.9);
+}
+
+.exit-button-red:hover {
+  background-color: rgba(255, 45, 45, 0.9);
+}
+
+.joystick-ui {
+  position: fixed;
+  width: 120px;
+  height: 120px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+
+  transform: translate(-30%, -20%);
+  /* joystick is centerally assigned (instead of top-left assigned) */
+  opacity: 0.5;
+  touch-action: none;
+}
+
+.joystick-ui.ui-visible {
+  opacity: 1;
+}
+
+.joystick-ui:active {
+  opacity: 0.8;
+}
+
+
+.action-ui.ui-visible {
+  opacity: 0.6;
+}
+
+.jump-button {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.jump-button:active {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(0.95);
+}
+
+.action-ui {
+  position: fixed;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  z-index: 1000;
+  transition: opacity 0.3s ease;
+  opacity: 0.5;
+  touch-action: none;
+  transform: translate(40%, -50%);
+  /* action is centerally assigned (instead of top-left assigned) */
+}
+
+
+.exit-ui {
+  position: fixed;
+  transition: all 0.3s ease-out;
+  background: rgba(255, 255, 255, 0.9);
+  z-index: 1000;
+}
+
+.scenes-container {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+.scene-key {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.scene-key:hover {
+  background: rgba(240, 240, 240, 0.9);
+}
+
+.scenes-ui {
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+
+}
+
+
+/* Toggle Switch Styles */
+.scene-attach-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.scene-attach-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4285f4;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
 }

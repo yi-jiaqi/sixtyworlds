@@ -4,7 +4,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-	<title>Sixty Worlds - Prototype 1.5</title>
+	<title>Sixty Worlds - Prototype 1.7</title>
 	<link rel="stylesheet" href="/style.css">
 	<script src="/lib/nipple.js"></script>
 	<script type="importmap">
@@ -39,7 +39,7 @@
 			Reaction;
 			Trace highlight
 		*/
-		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI, createJoystickUI, createActionUI, showMessage } from './ui.js';
+		import { createConfigUI, createCommentUI, showLoadingGear, hideLoadingGear, createShortcutsUI, checkUIExistence, isMobileDevice, createExitUI, createJoystickUI, createActionUI, showMessage, createGuideUI, createScenesUI, Scene } from './ui.js';
 		import { fetchUserState, getAuthorInfoBySerial, getModelData_Cloud } from './script.js';
 		import { loadModel } from './load.js';
 		import { uploadWorld } from './upload.js';
@@ -226,6 +226,8 @@
 					createExitUI()
 					createJoystickUI()
 					createActionUI()
+					createGuideUI()
+					createScenesUI()
 
 
 				} else {
@@ -263,6 +265,8 @@
 								createExitUI()
 								createJoystickUI()
 								createActionUI()
+								createGuideUI()
+								createScenesUI()
 							} else {
 								console.log("[Validated] The user is Not the authur")
 								createConfigUI(modelObject, false, authorUID)
@@ -272,6 +276,8 @@
 							}
 							createCommentUI(modelObject)
 							createShortcutsUI()
+							createGuideUI()
+							createScenesUI()
 							checkUIExistence()
 						})
 					}
@@ -362,8 +368,6 @@
 			height: 100%;
 			touch-action: none;
 		}
-
-
 	</style>
 </head>
 

@@ -6,7 +6,7 @@ import { Octree } from 'three/addons/math/Octree.js';
 import { OctreeHelper } from 'three/addons/helpers/OctreeHelper.js';
 import { Capsule } from 'three/addons/math/Capsule.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-import {  showLoadingGear, hideLoadingGear,showMessage } from './ui.js';
+import { showLoadingGear, hideLoadingGear, showMessage } from './ui.js';
 const BASE_URL = 'https://sixtyworlds.com';
 const clock = new THREE.Clock();
 export const scene = new THREE.Scene();
@@ -19,21 +19,21 @@ let currentMoveMode = 'fly'
 
 // Replace the single fillLight1 declaration with three lights
 const lights = {
-    HIGH: new THREE.HemisphereLight(0xffffff, 0x8dc1de, 2.5),
-    NORMAL: new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5),
-    DARK: new THREE.HemisphereLight(0x444444, 0x000000, 0.5)
+	HIGH: new THREE.HemisphereLight(0xffffff, 0x8dc1de, 2.5),
+	NORMAL: new THREE.HemisphereLight(0x8dc1de, 0x00668d, 1.5),
+	DARK: new THREE.HemisphereLight(0x444444, 0x000000, 0.5)
 };
 
 // Initialize all lights with the same position
 Object.values(lights).forEach(light => {
-    light.position.set(2, 1, 1);
-    scene.add(light);
+	light.position.set(2, 1, 1);
+	scene.add(light);
 });
 
 // Set initial visibility
 let currentLightMode = 'NORMAL';
 Object.entries(lights).forEach(([mode, light]) => {
-    light.visible = mode === currentLightMode;
+	light.visible = mode === currentLightMode;
 });
 
 const STANDARD_GRAVITY = 30;
@@ -265,29 +265,29 @@ export function toggleMoveMode() {
 
 // Update the toggleLighting function
 export function toggleLighting() {
-    // Previous light becomes invisible
-    lights[currentLightMode].visible = false;
-    
-    // Update current mode
-    switch (currentLightMode) {
-        case 'NORMAL':
-            currentLightMode = 'HIGH';
-            showMessage('Lighting Mode: High');
-            break;
-        case 'HIGH':
-            currentLightMode = 'DARK';
-            showMessage('Lighting Mode: Dark');
-            break;
-        case 'DARK':
-            currentLightMode = 'NORMAL';
-            showMessage('Lighting Mode: Normal');
-            break;
-    }
-    
-    // New light becomes visible
-    lights[currentLightMode].visible = true;
-    
-    return currentLightMode;
+	// Previous light becomes invisible
+	lights[currentLightMode].visible = false;
+
+	// Update current mode
+	switch (currentLightMode) {
+		case 'NORMAL':
+			currentLightMode = 'HIGH';
+			showMessage('Lighting Mode: High');
+			break;
+		case 'HIGH':
+			currentLightMode = 'DARK';
+			showMessage('Lighting Mode: Dark');
+			break;
+		case 'DARK':
+			currentLightMode = 'NORMAL';
+			showMessage('Lighting Mode: Normal');
+			break;
+	}
+
+	// New light becomes visible
+	lights[currentLightMode].visible = true;
+
+	return currentLightMode;
 }
 
 function controls(deltaTime) {
@@ -712,12 +712,23 @@ function initializeTouchControls() {
 	});
 }
 
-
-function gotoScene(){
-
+// Export a function to update camera position
+export function updateCameraPosition(position, rotation) {
+	// Your existing camera control logic here
+	playerCollider.start.set(position[0], position[1]-0.65, position[2]);
+	playerCollider.end.set(...position);
+	playerCollider.radius = 0.35;
+	camera.position.copy(playerCollider.end);
+	camera.rotation.set(...rotation);
+	// Any additional reset logic (e.g., velocity)
+	playerVelocity.set(0, 0, 0);
 }
 
-function recordScene(){
+// Listen for teleport events from UI
+document.addEventListener('teleportToScene', (e) => {
+	updateCameraPosition(e.detail.position, e.detail.rotation);
+});
+function recordScene() {
 
 }
 
