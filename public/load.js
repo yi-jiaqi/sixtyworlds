@@ -251,16 +251,24 @@ function getSideVector() {
 
 
 export function toggleMoveMode() {
-	if (currentMoveMode == 'fly') {
-		currentMoveMode = 'walk'
-		currentGravity = STANDARD_GRAVITY
-		showMessage('Move Mode: Walk')
-	} else {
-		currentMoveMode = 'fly'
-		currentGravity = STANDARD_GRAVITY / 6;
-		showMessage('Move Mode: Fly')
+	switch (currentMoveMode) {
+		case 'space':
+			currentMoveMode = 'walk';
+			currentGravity = STANDARD_GRAVITY;
+			showMessage('Move Mode: Walk');
+			break;
+		case 'fly':
+			currentMoveMode = 'space';
+			currentGravity = 0;
+			showMessage('Move Mode: Space');
+			break;
+		case 'walk':
+			currentMoveMode = 'fly';
+			currentGravity = STANDARD_GRAVITY / 6;
+			showMessage('Move Mode: Fly');
+			break;
 	}
-	return currentMoveMode
+	return currentMoveMode;
 }
 
 // Update the toggleLighting function
@@ -352,6 +360,15 @@ function controls(deltaTime) {
 		});
 	}
 
+	if (currentMoveMode === 'space') {
+		if (keyStates['KeyQ']) {
+			playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+		}
+		if (keyStates['KeyE']) {
+			playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+		}
+	}
+
 	// Add joystick controls
 	document.addEventListener('joystickMove', (event) => {
 		const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
@@ -382,7 +399,7 @@ function teleportPlayerIfOob() {
 		playerCollider.end.set(0, 1, 0);
 		playerCollider.radius = 0.35;
 		camera.position.copy(playerCollider.end);
-		camera.rotation.set(0, 0, tp_count *4);
+		camera.rotation.set(0, 0, tp_count * 4);
 		tp_count++;
 	}
 
@@ -715,7 +732,7 @@ function initializeTouchControls() {
 // Export a function to update camera position
 export function updateCameraPosition(position, rotation) {
 	// Your existing camera control logic here
-	playerCollider.start.set(position[0], position[1]-0.65, position[2]);
+	playerCollider.start.set(position[0], position[1] - 0.65, position[2]);
 	playerCollider.end.set(...position);
 	playerCollider.radius = 0.35;
 	camera.position.copy(playerCollider.end);
