@@ -202,9 +202,9 @@ export function openUploadWindow() {
 		}
 
 		// Check file size (<10MB)
-		if (file.size > 10 * 1024 * 1024) { // 10 MB in bytes
+		if (file.size > 20 * 1024 * 1024) { // 10 MB in bytes
 			console.log("too big");
-			alert('File size must be less than 10MB.');
+			alert('File size must be less than 20MB.');
 			return;
 		}
 
