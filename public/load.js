@@ -373,7 +373,7 @@ function controls(deltaTime) {
 		}
 	});
 }
-
+let tp_count = 0; // Initialize the last teleport time
 function teleportPlayerIfOob() {
 
 	if (camera.position.y <= - 25) {
@@ -382,8 +382,8 @@ function teleportPlayerIfOob() {
 		playerCollider.end.set(0, 1, 0);
 		playerCollider.radius = 0.35;
 		camera.position.copy(playerCollider.end);
-		camera.rotation.set(0, 0, 0);
-
+		camera.rotation.set(0, 0, tp_count *4);
+		tp_count++;
 	}
 
 }

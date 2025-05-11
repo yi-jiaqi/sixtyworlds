@@ -128,7 +128,7 @@
 
 		let messageReceived = false
 		// Step 2: Message event listener
-		window.addEventListener('message', (event) => {
+		window.addEventListener('message', async (event) => {
 			messageReceived = true;
 			if (event.origin !== window.location.origin) {
 				console.warn('Untrusted origin:', event.origin);
@@ -140,29 +140,62 @@
 			if (blob) {
 				console.log('File received:', fileName);
 				
-				// Create Blob URL directly without storing in sessionStorage
-				blobUrl = URL.createObjectURL(blob);
-				modelName = fileName;
-
-				console.log('Blob URL created:', blobUrl);
-
-				// Store only minimal metadata
 				try {
-					sessionStorage.setItem('modelMetadata', JSON.stringify({
+					// Show loading progress
+					showLoadingProgress('Processing file...');
+					
+					// Create blob URL in a separate task to avoid blocking
+					await new Promise(resolve => setTimeout(resolve, 0));
+					blobUrl = URL.createObjectURL(blob);
+					modelName = fileName;
+
+					console.log('Blob URL created:', blobUrl);
+
+					// Store minimal metadata
+					const metadata = {
 						modelName: fileName,
 						mimeType: mimeType,
 						timestamp: Date.now()
-					}));
-				} catch (e) {
-					console.warn('Failed to store metadata, continuing anyway:', e);
-				}
+					};
 
-				// Load the model and hide the loading gear
-				preModelLoading();
+					// Use localStorage instead of sessionStorage for larger capacity
+					try {
+						localStorage.setItem('modelMetadata', JSON.stringify(metadata));
+					} catch (e) {
+						console.warn('Failed to store metadata:', e);
+					}
+
+					hideLoadingProgress();
+					preModelLoading();
+				} catch (error) {
+					console.error('Error processing file:', error);
+					showMessage('Error loading file. Please try again.');
+					hideLoadingProgress();
+				}
 			} else {
 				console.error('No file data received.');
 			}
 		});
+
+		// Add these helper functions
+		function showLoadingProgress(message) {
+			const loadingUI = document.createElement('div');
+			loadingUI.id = 'loading-progress';
+			loadingUI.innerHTML = `
+				<div class="loading-container">
+					<div class="loading-spinner"></div>
+					<div class="loading-message">${message}</div>
+				</div>
+			`;
+			document.body.appendChild(loadingUI);
+		}
+
+		function hideLoadingProgress() {
+			const loadingUI = document.getElementById('loading-progress');
+			if (loadingUI) {
+				loadingUI.remove();
+			}
+		}
 
 		// Step 3: Trigger page initialization
 		if (!messageReceived) {
