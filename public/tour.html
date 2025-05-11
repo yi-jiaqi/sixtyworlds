@@ -129,46 +129,36 @@
 		let messageReceived = false
 		// Step 2: Message event listener
 		window.addEventListener('message', (event) => {
-			messageReceived = true
-			// Security check
+			messageReceived = true;
 			if (event.origin !== window.location.origin) {
 				console.warn('Untrusted origin:', event.origin);
 				return;
 			}
 
-			// Extract data from the event
 			const { fileName, blob, mimeType } = event.data;
 
 			if (blob) {
 				console.log('File received:', fileName);
+				
+				// Create Blob URL directly without storing in sessionStorage
+				blobUrl = URL.createObjectURL(blob);
+				modelName = fileName;
 
-				// Convert the Blob to Base64 and store in sessionStorage
-				const reader = new FileReader();
-				reader.onload = function () {
-					const fileData = reader.result; // Base64 string
+				console.log('Blob URL created:', blobUrl);
 
-					// Save the file data and metadata in sessionStorage
-					sessionStorage.setItem(
-						'modelData',
-						JSON.stringify({
-							fileData,
-							modelName: fileName,
-							mimeType,
-						})
-					);
+				// Store only minimal metadata
+				try {
+					sessionStorage.setItem('modelMetadata', JSON.stringify({
+						modelName: fileName,
+						mimeType: mimeType,
+						timestamp: Date.now()
+					}));
+				} catch (e) {
+					console.warn('Failed to store metadata, continuing anyway:', e);
+				}
 
-					console.log('File stored in sessionStorage.');
-
-					// Create Blob URL and update variables
-					blobUrl = URL.createObjectURL(blob);
-					modelName = fileName;
-
-					console.log('Blob URL created:', blobUrl);
-
-					// Load the model and hide the loading gear
-					preModelLoading();
-				};
-				reader.readAsDataURL(blob); // Convert Blob to Base64
+				// Load the model and hide the loading gear
+				preModelLoading();
 			} else {
 				console.error('No file data received.');
 			}
