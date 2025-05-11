@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 
 // Initialize DB (named as 'comments.db' but for comments + scenes)
 const db = new Database('comments.db');
-
+migrateDatabase();
 // Correct the tables structure
 db.exec(`
     CREATE TABLE IF NOT EXISTS comments (
@@ -129,7 +129,7 @@ function updateScene(sceneId, updates) {
     //     rotation: [0, Math.PI/2, 0],             // New rotation array
     //     name: "Updated Scene Name"               // New scene name
     // };
-    
+
     const validFields = ['sequence', 'position', 'rotation', 'name'];
     const updateEntries = Object.entries(updates)
         .filter(([key]) => validFields.includes(key))
@@ -139,7 +139,7 @@ function updateScene(sceneId, updates) {
             }
             return `${key} = ?`;
         });
-    
+
     if (updateEntries.length === 0) return null;
 
     const stmt = db.prepare(`
@@ -147,7 +147,7 @@ function updateScene(sceneId, updates) {
         SET ${updateEntries.join(', ')} 
         WHERE sceneId = ?
     `);
-    
+
     const values = [...Object.values(updates), sceneId];
     return stmt.run(...values);
 }
@@ -197,3 +197,56 @@ module.exports = {
 };
 
 // to do: re-arrange the order of scenes by dragging. too complex to do it now.
+
+
+function migrateDatabase() {
+    try {
+        // Define all required columns and their definitions
+        const requiredColumns = {
+            'serial': 'TEXT NOT NULL',
+            'attachScene': 'BOOLEAN DEFAULT 0',
+            'associatedSceneId': 'INTEGER'
+        };
+
+        // Get current columns
+        const currentColumns = db.prepare(`
+            SELECT name 
+            FROM pragma_table_info('comments')
+        `).all().map(col => col.name);
+
+        // Check and rename postId if needed
+        const hasPostId = currentColumns.includes('postId');
+        if (hasPostId && !currentColumns.includes('serial')) {
+            db.exec(`
+                BEGIN TRANSACTION;
+                ALTER TABLE comments RENAME COLUMN postId TO serial;
+                COMMIT;
+            `);
+            console.log('Migration complete: postId renamed to serial');
+            currentColumns[currentColumns.indexOf('postId')] = 'serial';
+        }
+
+        // Add missing columns
+        for (const [columnName, definition] of Object.entries(requiredColumns)) {
+            if (!currentColumns.includes(columnName)) {
+                db.exec(`
+                    BEGIN TRANSACTION;
+                    ALTER TABLE comments ADD COLUMN ${columnName} ${definition};
+                    COMMIT;
+                `);
+                console.log(`Migration complete: Added ${columnName} column`);
+            }
+        }
+
+        // Verify migration
+        const verifyColumns = db.prepare(`
+            SELECT name FROM pragma_table_info('comments')
+        `).all().map(col => col.name);
+        
+        console.log('Current columns:', verifyColumns);
+
+    } catch (error) {
+        console.error('Migration failed:', error);
+        throw error;
+    }
+}

@@ -43,7 +43,7 @@ const { db,
     renameScene,
     getCommentsBySerial,
     addComment,
-    deleteComment, } = require('../db');
+    deleteComment, } = require('./db');
 app.use(express.text({ type: 'text/*' }));  // Ensure that it handles any text content, including CSV
 app.use(express.json());
 app.use(bodyParser.json());
@@ -997,17 +997,49 @@ API Endpoints of Comments & Scenes (database_related)
 
 // get comments by serial
 app.get('/api/comments', async (req, res) => {
-    if (!req.query.serial) {
-        return res.status(400).json({ error: 'Missing serial parameter' });
-    }
-
+    const { serial, limit = 15 } = req.query;
+    
     try {
-        const comments = await getCommentsBySerial(req.query.serial);
-        const commentsWithUsernames = await addUsernames(comments);
+        const stmt = db.prepare(`
+            SELECT * FROM comments 
+            WHERE serial = ? 
+            ORDER BY createdAt DESC 
+            LIMIT ?
+        `);
+        
+        const comments = stmt.all(serial, limit);
+        
+        // Map through comments and add username for each
+        const commentsWithUsernames = await Promise.all(comments.map(async (comment) => {
+            try {
+                const username = await getAuthorName(comment.userId);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: " + username)
+                return {
+                    ...comment,
+                    username,
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            } catch (error) {
+                // If username not found, use 'Anonymous'
+                console.log("Error fetching username:", error);
+                console.log("comment.userId: " + comment.userId)
+                console.log("username: Anonymous")
+                return {
+                    ...comment,
+                    username: 'Anonymous',
+                    positionArray: comment.positionArray ? JSON.parse(comment.positionArray) : []
+                };
+            }
+        }));
+
         res.json(commentsWithUsernames);
     } catch (error) {
-        console.error('Error fetching comments:', error);
-        res.status(500).json({ error: 'Failed to fetch comments' });
+        console.error('Database error:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch comments',
+            details: error.message 
+        });
     }
 });
 
